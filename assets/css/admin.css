@@ -1,0 +1,23 @@
+.smb-admin h3 { margin: 1em 0 .4em; font-size: 14px; }
+.smb-admin h3 small { font-weight: 400; color: #646970; }
+.smb-admin hr { margin: 18px 0; border: 0; border-top: 1px solid #dcdcde; }
+.smb-grid { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.smb-grid > p { margin: 6px 0; }
+.smb-admin .smb-wide { width: 100%; max-width: 560px; }
+.smb-packs input[type=text] { width: 100%; }
+.smb-packs td { vertical-align: middle; }
+
+/* picked products table */
+.smb-itemtable { max-width: 760px; }
+.smb-itemtable td { vertical-align: middle; }
+.smb-itemtable .smb-col-handle { width: 34px; text-align: center; cursor: move; color: #8c8f94; }
+.smb-itemtable tbody .smb-col-handle:hover { color: #1d2327; }
+.smb-itemtable .smb-col-remove { width: 48px; text-align: center; }
+.smb-itemtable .smb-col-badge input { width: 100%; }
+.smb-itemtable .smb-col-product { display: table-cell; }
+.smb-itemtable .smb-thumb { display: inline-block; width: 36px; height: 36px; margin-right: 10px; vertical-align: middle; background: #f0f0f1; border-radius: 4px; overflow: hidden; }
+.smb-itemtable .smb-thumb img { display: block; width: 36px; height: 36px; object-fit: cover; }
+.smb-itemtable .smb-pname { vertical-align: middle; font-weight: 600; }
+.smb-itemtable tr.ui-sortable-helper { background: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, .15); }
+.smb-itemtable tr.ui-sortable-placeholder { visibility: visible !important; background: #f6f7f7; }
+.smb-empty { margin: 6px 0 12px; }
