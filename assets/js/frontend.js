@@ -129,6 +129,77 @@
 		}
 	}
 
+	/* ---------- pack offers: quantity ranges ---------- */
+
+	function initRanges($wrap) {
+		var $form = findForm($wrap);
+		var $qty = $form.find('input.qty, input[name="quantity"]').first();
+		var $rows = $wrap.find('.smb-range');
+		var $sum = $wrap.find('.smb-ranges-summary');
+		var cur = parseFloat($wrap.attr('data-current')) || 0;
+		var reg = parseFloat($wrap.attr('data-regular'));
+		if (isNaN(reg)) {
+			reg = cur;
+		}
+		var orig = { cur: cur, reg: reg };
+
+		function unitFor($r) {
+			return cur * (100 - (parseFloat($r.attr('data-value')) || 0)) / 100;
+		}
+
+		/* Same rule as SMB_Pricing::range_for_qty() */
+		function rangeFor(q) {
+			var $hit = null;
+			$rows.each(function () {
+				var from = parseInt($(this).attr('data-from'), 10) || 1;
+				var to = parseInt($(this).attr('data-to'), 10) || 0;
+				if (q >= from && (!to || q <= to)) {
+					$hit = $(this);
+					return false;
+				}
+			});
+			return $hit;
+		}
+
+		function render() {
+			var q = parseInt($qty.val(), 10) || 1;
+			var $m = rangeFor(q);
+			$rows.removeClass('is-selected').each(function () {
+				var unit = unitFor($(this));
+				$(this).find('.smb-range-price .smb-price').html(fmt(unit));
+				$(this).find('.smb-range-price .smb-strike').html(fmt(reg)).toggleClass('is-hidden', !(reg > unit));
+			});
+			if ($m) {
+				$m.addClass('is-selected');
+			}
+			var unit = $m ? unitFor($m) : cur;
+			var save = Math.max(0, (reg - unit) * q);
+			$sum.removeClass('is-hidden').html(q + ' &times; ' + fmt(unit) + ' = ' + fmt(unit * q) + (save > 0 ? ' &middot; ' + T.youSave + ' ' + fmt(save) : ''));
+		}
+
+		$qty.on('change input', render);
+
+		if ($wrap.attr('data-variable') === '1') {
+			$form.on('found_variation', function (e, v) {
+				var c = parseFloat(v.display_price);
+				var g = parseFloat(v.display_regular_price);
+				if (isNaN(c)) {
+					return;
+				}
+				cur = c;
+				reg = isNaN(g) ? c : g;
+				render();
+			});
+			$form.on('reset_data hide_variation', function () {
+				cur = orig.cur;
+				reg = orig.reg;
+				render();
+			});
+		}
+
+		render();
+	}
+
 	/* ---------- bundle offer ---------- */
 
 	function initBundle($wrap) {
@@ -414,6 +485,7 @@
 
 	function bootWithin($scope) {
 		$scope.find('.smb-wrap[data-smb="packs"]').each(function () { initPacks($(this)); });
+		$scope.find('.smb-wrap[data-smb="ranges"]').each(function () { initRanges($(this)); });
 		$scope.find('.smb-wrap[data-smb="bundle"]').each(function () { initBundle($(this)); });
 		$scope.find('.smb-wrap[data-smb="fbt"]').each(function () {
 			var $w = $(this);

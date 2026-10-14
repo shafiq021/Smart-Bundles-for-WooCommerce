@@ -8,6 +8,9 @@ defined( 'ABSPATH' ) || exit;
  *  - Pack offer: the cart line quantity picks the tier (highest tier qty <= line qty).
  *      percent  => unit price = current price x (1 - value/100)
  *      fixed    => unit price = value / tier qty      ("2 pack for Rs.2,565")
+ *  - Quantity ranges (optional Pack mode): "1-2 = 5% off, 3-5 = 10% off, 6+ = 15% off". The range is
+ *    picked by the TOTAL quantity of the product in the cart (all variations together), and every
+ *    unit of it is charged at that range's percentage off.
  *  - "Frequently bought together" add-ons are ordinary cart lines at their normal price. No discount.
  *  - Bundle offer: the main product + its picked items are sold as one deal. The combined discount
  *    (percent off, or a fixed total) is spread across every line so each still shows its own price,
@@ -95,6 +98,135 @@ class SMB_Pricing {
 			return $tier['value'] / max( 1, $tier['qty'] );
 		}
 		return (float) $current_price * ( 100 - $tier['value'] ) / 100;
+	}
+
+	/* ---------------------------------------------------------------
+	 * Quantity ranges
+	 * ------------------------------------------------------------- */
+
+	/**
+	 * Clean ranges sorted by "from". A range is [ 'from' => int >= 1, 'to' => int (0 = "and up"),
+	 * 'value' => % off (0-100), 'label' => string ]. Rows that cannot be read are dropped;
+	 * validate_ranges() is what tells the admin about them.
+	 */
+	public static function clean_ranges( $rows ) {
+		$out = array();
+		foreach ( (array) $rows as $r ) {
+			$from = isset( $r['from'] ) ? absint( $r['from'] ) : 0;
+			$to   = isset( $r['to'] ) ? absint( $r['to'] ) : 0;
+			if ( $from < 1 || ( $to && $to < $from ) ) {
+				continue;
+			}
+			$out[] = array(
+				'from'  => $from,
+				'to'    => $to,
+				'value' => isset( $r['value'] ) ? max( 0, min( 100, (float) $r['value'] ) ) : 0,
+				'label' => isset( $r['label'] ) ? (string) $r['label'] : '',
+			);
+		}
+		usort( $out, function ( $a, $b ) {
+			return $a['from'] <=> $b['from'];
+		} );
+		return $out;
+	}
+
+	/**
+	 * Check raw ranges (as typed in the editor) and say what is wrong, in plain words.
+	 * Completely empty rows are ignored. An empty result means the ranges are fine.
+	 *
+	 * @param array $rows [ ['from' => '', 'to' => '', 'value' => '', 'label' => ''], ... ]
+	 * @return string[]
+	 */
+	public static function validate_ranges( $rows ) {
+		$errors = array();
+		$ok     = array();
+		$n      = 0;
+		foreach ( (array) $rows as $r ) {
+			$from  = isset( $r['from'] ) ? trim( (string) $r['from'] ) : '';
+			$to    = isset( $r['to'] ) ? trim( (string) $r['to'] ) : '';
+			$value = isset( $r['value'] ) ? trim( (string) $r['value'] ) : '';
+			if ( '' === $from && '' === $to && '' === $value ) {
+				continue;
+			}
+			$n++;
+			$bad = false;
+			if ( ! ctype_digit( $from ) || (int) $from < 1 ) {
+				/* translators: %d: row number */
+				$errors[] = sprintf( __( 'Range %d: "From" must be a whole number, 1 or more.', 'smart-bundles' ), $n );
+				$bad      = true;
+			}
+			if ( '' !== $to && ( ! ctype_digit( $to ) || ( ctype_digit( $from ) && (int) $to < (int) $from ) ) ) {
+				/* translators: %d: row number */
+				$errors[] = sprintf( __( 'Range %d: "To" must be a whole number that is not lower than "From" (leave it empty for "and up").', 'smart-bundles' ), $n );
+				$bad      = true;
+			}
+			if ( ! is_numeric( $value ) || (float) $value < 0 || (float) $value > 100 ) {
+				/* translators: %d: row number */
+				$errors[] = sprintf( __( 'Range %d: the discount must be a number from 0 to 100.', 'smart-bundles' ), $n );
+				$bad      = true;
+			}
+			if ( ! $bad ) {
+				$ok[] = array( 'from' => (int) $from, 'to' => '' === $to ? 0 : (int) $to );
+			}
+		}
+
+		usort( $ok, function ( $a, $b ) {
+			return $a['from'] <=> $b['from'];
+		} );
+		for ( $i = 1; $i < count( $ok ); $i++ ) {
+			$prev = $ok[ $i - 1 ];
+			$cur  = $ok[ $i ];
+			if ( 0 === $prev['to'] || $cur['from'] <= $prev['to'] ) {
+				$errors[] = sprintf(
+					/* translators: 1: first range such as 1–3, 2: second range such as 3–5 */
+					__( 'Ranges %1$s and %2$s overlap.', 'smart-bundles' ),
+					self::range_text( $prev['from'], $prev['to'] ),
+					self::range_text( $cur['from'], $cur['to'] )
+				);
+			}
+		}
+		return $errors;
+	}
+
+	/** "3–5", "6+", or "4" for a single quantity. */
+	public static function range_text( $from, $to ) {
+		if ( ! $to ) {
+			return $from . '+';
+		}
+		return $from === $to ? (string) $from : $from . '–' . $to;
+	}
+
+	/** The range that covers a quantity, or null (a gap between ranges means no discount). */
+	public static function range_for_qty( $ranges, $qty ) {
+		foreach ( $ranges as $r ) {
+			if ( $qty >= $r['from'] && ( ! $r['to'] || $qty <= $r['to'] ) ) {
+				return $r;
+			}
+		}
+		return null;
+	}
+
+	/** Unit price after a range's percentage off. */
+	public static function range_unit_price( $range, $current_price ) {
+		return (float) $current_price * ( 100 - $range['value'] ) / 100;
+	}
+
+	/**
+	 * Total quantity of each product in the cart (all variations together). Bundle lines are left
+	 * out: they are priced by the bundle, not by quantity.
+	 *
+	 * @return array [ product id => quantity ]
+	 */
+	public static function product_quantities( $cart ) {
+		$totals = array();
+		foreach ( $cart->get_cart() as $item ) {
+			if ( isset( $item['smb_bundle_price'] ) ) {
+				continue;
+			}
+			$pid            = (int) $item['product_id'];
+			$totals[ $pid ] = ( isset( $totals[ $pid ] ) ? $totals[ $pid ] : 0 ) + (int) $item['quantity'];
+		}
+		return $totals;
 	}
 
 	/**
@@ -258,6 +390,8 @@ class SMB_Pricing {
 			return;
 		}
 
+		$totals = self::product_quantities( $cart );
+
 		foreach ( $cart->get_cart() as $item ) {
 			// Bundle offer: the unit price was already computed when it was added to the cart.
 			if ( isset( $item['smb_bundle_price'] ) ) {
@@ -273,6 +407,17 @@ class SMB_Pricing {
 			if ( ! $product ) {
 				continue;
 			}
+
+			// Quantity ranges: always set the price, so a quantity that drops out of a range goes back to
+			// the normal price instead of keeping the last discount.
+			if ( 'ranges' === $cfg['pack_mode'] ) {
+				$current = (float) $product->get_price();
+				$qty     = isset( $totals[ (int) $item['product_id'] ] ) ? $totals[ (int) $item['product_id'] ] : (int) $item['quantity'];
+				$range   = self::range_for_qty( $cfg['ranges'], $qty );
+				$item['data']->set_price( $range ? self::range_unit_price( $range, $current ) : $current );
+				continue;
+			}
+
 			$tier = self::tier_for_qty( self::clean_tiers( $cfg['packs'] ), (int) $item['quantity'] );
 			if ( $tier ) {
 				$current = (float) $product->get_price(); // fresh object => no compounding
@@ -299,7 +444,18 @@ class SMB_Pricing {
 
 		if ( ! empty( $item['product_id'] ) ) {
 			$cfg = SMB_Source::config( $item['product_id'] );
-			if ( $cfg['packs_on'] ) {
+			if ( $cfg['packs_on'] && 'ranges' === $cfg['pack_mode'] ) {
+				$totals = ( function_exists( 'WC' ) && WC()->cart ) ? self::product_quantities( WC()->cart ) : array();
+				$qty    = isset( $totals[ (int) $item['product_id'] ] ) ? $totals[ (int) $item['product_id'] ] : (int) $item['quantity'];
+				$range  = self::range_for_qty( $cfg['ranges'], $qty );
+				if ( $range && $range['value'] > 0 ) {
+					$rows[] = array(
+						'name'  => __( 'Quantity discount', 'smart-bundles' ),
+						/* translators: 1: quantity range such as 3–5, 2: percent off */
+						'value' => sprintf( __( '%1$s (%2$s%% off)', 'smart-bundles' ), self::range_text( $range['from'], $range['to'] ), SMB_Frontend::pct_text( $range['value'] ) ),
+					);
+				}
+			} elseif ( $cfg['packs_on'] ) {
 				$tier = self::tier_for_qty( self::clean_tiers( $cfg['packs'] ), (int) $item['quantity'] );
 				if ( $tier ) {
 					$rows[] = array(

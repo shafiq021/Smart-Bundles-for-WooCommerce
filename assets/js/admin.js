@@ -21,6 +21,102 @@
 			$(this).closest('tr').remove();
 		});
 
+		/* ---------- pack style: pack cards vs. quantity ranges ---------- */
+
+		var $mode = $box.find('.smb-pack-mode');
+
+		function syncMode() {
+			var ranges = $mode.val() === 'ranges';
+			$box.find('.smb-mode-ranges').toggle(ranges);
+			$box.find('.smb-mode-cards').toggle(!ranges);
+		}
+		$mode.on('change', syncMode);
+		syncMode();
+
+		$box.on('click', '.smb-add-range', function () {
+			var $btn = $(this);
+			var i = parseInt($btn.attr('data-next'), 10) || 0;
+			$box.find('.smb-ranges tbody').append($('#smb-range-tpl').html().replace(/__i__/g, i));
+			$btn.attr('data-next', i + 1);
+		});
+
+		$box.on('click', '.smb-remove-range', function () {
+			$(this).closest('tr').remove();
+			$box.find('.smb-range-errors').hide();
+		});
+
+		/* Same rules as SMB_Pricing::validate_ranges(): the server has the last word, this just
+		 * warns before the page is sent. */
+		function rangeText(from, to) {
+			if (!to) {
+				return from + '+';
+			}
+			return from === to ? String(from) : from + '\u2013' + to;
+		}
+
+		function rangeErrors() {
+			var errors = [];
+			var ok = [];
+			var n = 0;
+			var int = /^\d+$/;
+			$box.find('.smb-ranges tbody tr').each(function () {
+				var $r = $(this);
+				var from = $.trim($r.find('.smb-range-from').val());
+				var to = $.trim($r.find('.smb-range-to').val());
+				var val = $.trim($r.find('.smb-range-value').val());
+				if (from === '' && to === '' && val === '') {
+					return;
+				}
+				n++;
+				var bad = false;
+				if (!int.test(from) || parseInt(from, 10) < 1) {
+					errors.push('Range ' + n + ': "From" must be a whole number, 1 or more.');
+					bad = true;
+				}
+				if (to !== '' && (!int.test(to) || (int.test(from) && parseInt(to, 10) < parseInt(from, 10)))) {
+					errors.push('Range ' + n + ': "To" must be a whole number that is not lower than "From" (leave it empty for "and up").');
+					bad = true;
+				}
+				if (val === '' || isNaN(Number(val)) || Number(val) < 0 || Number(val) > 100) {
+					errors.push('Range ' + n + ': the discount must be a number from 0 to 100.');
+					bad = true;
+				}
+				if (!bad) {
+					ok.push({ from: parseInt(from, 10), to: to === '' ? 0 : parseInt(to, 10) });
+				}
+			});
+			ok.sort(function (a, b) { return a.from - b.from; });
+			for (var i = 1; i < ok.length; i++) {
+				if (ok[i - 1].to === 0 || ok[i].from <= ok[i - 1].to) {
+					errors.push('Ranges ' + rangeText(ok[i - 1].from, ok[i - 1].to) + ' and ' + rangeText(ok[i].from, ok[i].to) + ' overlap.');
+				}
+			}
+			if (!errors.length && n === 0) {
+				errors.push('Add at least one quantity range, or switch the pack style back to pack cards.');
+			}
+			return errors;
+		}
+
+		$box.closest('form').on('submit', function (e) {
+			if ($mode.val() !== 'ranges') {
+				return;
+			}
+			var errors = rangeErrors();
+			var $out = $box.find('.smb-range-errors');
+			if (!errors.length) {
+				$out.hide().empty();
+				return;
+			}
+			e.preventDefault();
+			$out.empty().append($('<p>').text(errors.join(' '))).show();
+			$out[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+			// WordPress greys the Update button and starts its spinner before this runs; undo that.
+			setTimeout(function () {
+				$('.spinner').removeClass('is-active');
+				$('#publish, #save-post').removeClass('disabled button-disabled').prop('disabled', false);
+			}, 0);
+		});
+
 		/* ---------- picked products table(s): one per .smb-item-picker ---------- */
 
 		$box.find('.smb-item-picker').each(function () {

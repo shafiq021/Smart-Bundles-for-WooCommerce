@@ -21,3 +21,5 @@
 .smb-itemtable tr.ui-sortable-helper { background: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, .15); }
 .smb-itemtable tr.ui-sortable-placeholder { visibility: visible !important; background: #f6f7f7; }
 .smb-empty { margin: 6px 0 12px; }
+.smb-ranges input.small-text { width: 80px; }
+.smb-range-errors { margin: 8px 0 !important; }

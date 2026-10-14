@@ -222,6 +222,9 @@ class SMB_Frontend {
 		if ( ! $cfg['packs_on'] ) {
 			return '';
 		}
+		if ( 'ranges' === $cfg['pack_mode'] ) {
+			return self::ranges_html( $product, $cfg );
+		}
 		$guard = 'packs-' . $id;
 		if ( isset( self::$printed[ $guard ] ) ) {
 			return '';
@@ -264,6 +267,48 @@ class SMB_Frontend {
 			'title'    => $title,
 			'is_var'   => $product->is_type( 'variable' ),
 			'hide_qty' => 'yes' === SMB_Settings::get( 'hide_qty' ),
+		) );
+		return ob_get_clean();
+	}
+
+	/* ---------------------------------------------------------------
+	 * Pack offers, quantity-range style ("1-2 = 5% off, 3-5 = 10% off, 6+ = 15% off")
+	 * ------------------------------------------------------------- */
+
+	private static function ranges_html( $product, $cfg ) {
+		$id    = $product->get_id();
+		$guard = 'packs-' . $id;
+		if ( isset( self::$printed[ $guard ] ) ) {
+			return '';
+		}
+
+		list( $current, $regular ) = self::display_prices( $product );
+
+		$ranges = array();
+		foreach ( $cfg['ranges'] as $r ) {
+			$r['text']     = '' !== $r['label'] ? $r['label'] : SMB_Pricing::range_text( $r['from'], $r['to'] );
+			$r['unit']     = SMB_Pricing::range_unit_price( $r, $current );
+			$r['regular']  = $regular;
+			$r['pct_text'] = self::pct_text( $r['value'] );
+			$ranges[]      = $r;
+		}
+		if ( empty( $ranges ) ) {
+			return '';
+		}
+		self::$printed[ $guard ] = true;
+
+		self::enqueue();
+
+		$title = '' !== $cfg['packs_title'] ? $cfg['packs_title'] : SMB_Settings::get( 'packs_title' );
+
+		ob_start();
+		smb_get_template( 'ranges.php', array(
+			'product' => $product,
+			'ranges'  => $ranges,
+			'title'   => $title,
+			'is_var'  => $product->is_type( 'variable' ),
+			'current' => $current,
+			'regular' => $regular,
 		) );
 		return ob_get_clean();
 	}

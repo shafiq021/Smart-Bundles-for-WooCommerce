@@ -11,6 +11,7 @@ class SMB_Admin {
 		add_action( 'save_post_product', array( __CLASS__, 'save' ), 10, 2 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
 		add_action( 'wp_ajax_smb_search_products', array( __CLASS__, 'ajax_search_products' ) );
+		add_action( 'admin_notices', array( __CLASS__, 'notices' ) );
 add_filter( 'plugin_action_links_' . plugin_basename( SMB_FILE ), function ( $links ) {
 			array_unshift( $links, '<a href="' . esc_url( admin_url( 'admin.php?page=smart-bundles' ) ) . '">Settings</a>' );
 			return $links;
@@ -61,6 +62,24 @@ add_filter( 'plugin_action_links_' . plugin_basename( SMB_FILE ), function ( $li
 			<td><input type="text" name="smb_packs[<?php echo esc_attr( $i ); ?>][badge]" value="<?php echo esc_attr( $r['badge'] ); ?>" placeholder="Most Popular"/></td>
 			<td style="text-align:center"><input type="radio" name="smb_pack_default" value="<?php echo esc_attr( $i ); ?>" <?php checked( ! empty( $r['default'] ) ); ?>/></td>
 			<td><button type="button" class="button smb-remove" aria-label="Remove">&times;</button></td>
+		</tr>
+		<?php
+	}
+
+	/* ---------------------------------------------------------------
+	 * Quantity-range rows
+	 * ------------------------------------------------------------- */
+
+	private static function range_row( $i, $r ) {
+		$r = wp_parse_args( $r, array( 'from' => '', 'to' => '', 'value' => '', 'label' => '' ) );
+		$n = esc_attr( $i );
+		?>
+		<tr class="smb-range-row">
+			<td><input type="number" min="1" step="1" name="smb_ranges[<?php echo $n; // phpcs:ignore WordPress.Security.EscapeOutput ?>][from]" value="<?php echo esc_attr( $r['from'] ); ?>" class="small-text smb-range-from" placeholder="1"/></td>
+			<td><input type="number" min="1" step="1" name="smb_ranges[<?php echo $n; // phpcs:ignore WordPress.Security.EscapeOutput ?>][to]" value="<?php echo esc_attr( $r['to'] ); ?>" class="small-text smb-range-to" placeholder="and up"/></td>
+			<td><input type="number" min="0" max="100" step="any" name="smb_ranges[<?php echo $n; // phpcs:ignore WordPress.Security.EscapeOutput ?>][value]" value="<?php echo esc_attr( $r['value'] ); ?>" class="small-text smb-range-value" placeholder="5"/> %</td>
+			<td><input type="text" name="smb_ranges[<?php echo $n; // phpcs:ignore WordPress.Security.EscapeOutput ?>][label]" value="<?php echo esc_attr( $r['label'] ); ?>" placeholder="Auto (e.g. 3–5)"/></td>
+			<td><button type="button" class="button smb-remove-range" aria-label="Remove">&times;</button></td>
 		</tr>
 		<?php
 	}
@@ -158,6 +177,35 @@ add_filter( 'plugin_action_links_' . plugin_basename( SMB_FILE ), function ( $li
 				<input type="text" class="smb-wide" name="smb_packs_title" value="<?php echo esc_attr( $c['packs_title'] ); ?>" placeholder="<?php echo esc_attr( $g['packs_title'] ); ?>"/>
 				<span class="description">Leave empty to use the heading from the Smart Bundles settings page.</span>
 			</p>
+			<p>
+				<label><strong>Pack style</strong></label><br/>
+				<select name="smb_pack_mode" class="smb-pack-mode">
+					<option value="cards" <?php selected( $c['pack_mode'], 'cards' ); ?>>Pack cards — "1 pack / 2 pack / 3 pack", the shopper picks one</option>
+					<option value="ranges" <?php selected( $c['pack_mode'], 'ranges' ); ?>>Quantity ranges — the % off grows with the quantity (1–2 = 5%, 3–5 = 10%, 6+ = 15%)</option>
+				</select>
+			</p>
+
+			<div class="smb-mode-ranges">
+				<table class="widefat smb-ranges">
+					<thead><tr><th>From qty</th><th>To qty</th><th>Discount</th><th>Label (optional)</th><th></th></tr></thead>
+					<tbody>
+						<?php
+						$ri = 0;
+						foreach ( $c['ranges'] as $r ) {
+							self::range_row( $ri++, array_merge( $r, array( 'to' => $r['to'] ? $r['to'] : '' ) ) );
+						}
+						?>
+					</tbody>
+				</table>
+				<p>
+					<button type="button" class="button smb-add-range" data-next="<?php echo esc_attr( $ri ); ?>">+ Add range</button>
+					<span class="description">Leave "To" empty for "and up" (only the last range can be open-ended). Ranges cannot overlap; a quantity that falls in a gap pays the normal price. The range is chosen by the total quantity of this product in the cart, and every unit gets that range's % off.</span>
+				</p>
+				<div class="smb-range-errors notice notice-error inline" style="display:none"></div>
+				<script type="text/html" id="smb-range-tpl"><?php self::range_row( '__i__', array() ); ?></script>
+			</div>
+
+			<div class="smb-mode-cards">
 			<table class="widefat smb-packs">
 				<thead><tr><th>Label</th><th>Quantity</th><th>Discount</th><th>Value</th><th>Badge (optional)</th><th>Selected by default</th><th></th></tr></thead>
 				<tbody>
@@ -174,6 +222,7 @@ add_filter( 'plugin_action_links_' . plugin_basename( SMB_FILE ), function ( $li
 				<span class="description">"% off" is taken off the product's current price. "Fixed pack price" is the total for the whole pack (e.g. 2 pack = 2565). For variable products use "% off".</span>
 			</p>
 			<script type="text/html" id="smb-row-tpl"><?php self::row( '__i__', array() ); ?></script>
+			</div>
 
 			<hr/>
 
@@ -293,6 +342,7 @@ add_filter( 'plugin_action_links_' . plugin_basename( SMB_FILE ), function ( $li
 				);
 			}
 		}
+		self::save_pack_mode( $post_id );
 		update_post_meta( $post_id, '_smb_packs', $rows );
 		update_post_meta( $post_id, '_smb_packs_on', isset( $_POST['smb_packs_on'] ) ? 'yes' : 'no' );
 		update_post_meta( $post_id, '_smb_packs_title', isset( $_POST['smb_packs_title'] ) ? sanitize_text_field( wp_unslash( $_POST['smb_packs_title'] ) ) : '' );
@@ -331,6 +381,59 @@ add_filter( 'plugin_action_links_' . plugin_basename( SMB_FILE ), function ( $li
 			$bundle_items[] = array( 'id' => $r['id'], 'variation_id' => $r['variation_id'] );
 		}
 		update_post_meta( $post_id, '_smb_bundle_items', $bundle_items );
+	}
+
+	/**
+	 * Pack style + quantity ranges. Ranges are validated here (the server has the last word, the
+	 * editor script only warns early): on a problem nothing about the pack style changes and the
+	 * admin is told why on the next screen.
+	 */
+	private static function save_pack_mode( $post_id ) {
+		$mode = ( isset( $_POST['smb_pack_mode'] ) && 'ranges' === $_POST['smb_pack_mode'] ) ? 'ranges' : 'cards';
+		if ( 'cards' === $mode ) {
+			update_post_meta( $post_id, '_smb_pack_mode', 'cards' ); // saved ranges are kept for later
+			return;
+		}
+
+		$raw = array();
+		if ( isset( $_POST['smb_ranges'] ) && is_array( $_POST['smb_ranges'] ) ) {
+			foreach ( wp_unslash( $_POST['smb_ranges'] ) as $r ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+				$raw[] = array(
+					'from'  => sanitize_text_field( isset( $r['from'] ) ? $r['from'] : '' ),
+					'to'    => sanitize_text_field( isset( $r['to'] ) ? $r['to'] : '' ),
+					'value' => sanitize_text_field( isset( $r['value'] ) ? $r['value'] : '' ),
+					'label' => sanitize_text_field( isset( $r['label'] ) ? $r['label'] : '' ),
+				);
+			}
+		}
+
+		$errors = SMB_Pricing::validate_ranges( $raw );
+		$clean  = SMB_Pricing::clean_ranges( $raw );
+		if ( empty( $errors ) && empty( $clean ) ) {
+			$errors[] = __( 'Add at least one quantity range, or switch the pack style back to pack cards.', 'smart-bundles' );
+		}
+		if ( ! empty( $errors ) ) {
+			set_transient( 'smb_notice_' . get_current_user_id(), $errors, 5 * MINUTE_IN_SECONDS );
+			return;
+		}
+
+		update_post_meta( $post_id, '_smb_pack_mode', 'ranges' );
+		update_post_meta( $post_id, '_smb_ranges', $clean );
+	}
+
+	/** Show why the quantity ranges were not saved. */
+	public static function notices() {
+		$key    = 'smb_notice_' . get_current_user_id();
+		$errors = get_transient( $key );
+		if ( empty( $errors ) || ! is_array( $errors ) ) {
+			return;
+		}
+		delete_transient( $key );
+		echo '<div class="notice notice-error"><p><strong>' . esc_html__( 'Smart Bundles: quantity ranges were not saved.', 'smart-bundles' ) . '</strong> ' . esc_html__( 'Fix the following and save again; the pack style was left as it was.', 'smart-bundles' ) . '</p><ul style="list-style:disc;margin-left:2em">';
+		foreach ( $errors as $e ) {
+			echo '<li>' . esc_html( $e ) . '</li>';
+		}
+		echo '</ul></div>';
 	}
 
 	/**

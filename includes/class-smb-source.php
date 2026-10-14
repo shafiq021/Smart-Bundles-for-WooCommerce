@@ -92,8 +92,14 @@ class SMB_Source {
 		$pick_from = $meta( 'pick_from', 'inherit' );
 		$limit     = $meta( 'limit', '' );
 
+		// Pack style: 'cards' (Buy 1 / Buy 2 ..., the original) or 'ranges' (5% off 1-2, 10% off 3-5 ...).
+		$pack_mode = 'ranges' === $meta( 'pack_mode', 'cards' ) ? 'ranges' : 'cards';
+		$ranges    = SMB_Pricing::clean_ranges( $meta( 'ranges', array() ) );
+
 		return array(
-			'packs_on'    => $packs_on_saved && ! $bundle_on && ! empty( $packs ),
+			'packs_on'    => $packs_on_saved && ! $bundle_on && ! empty( 'ranges' === $pack_mode ? $ranges : $packs ),
+			'pack_mode'   => $pack_mode,
+			'ranges'      => $ranges,
 			'packs'       => $packs,
 			'packs_title' => (string) $meta( 'packs_title', '' ), // '' = use the global heading
 			'fbt_mode'    => $meta( 'fbt_mode', 'inherit' ),       // inherit|on|off

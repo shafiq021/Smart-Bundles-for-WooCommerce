@@ -440,3 +440,10 @@ form.cart.smb-hide-qty .quantity { display: none !important; }
 
 /* Variation dropdown for variable add-ons / bundle items (functional only; V3 styles it) */
 .smb-wrap .smb-var-select { display: block; max-width: 100%; margin-top: 4px; }
+
+/* Quantity ranges (functional only; V3 styles it) */
+.smb-wrap .smb-range-list { display: flex; flex-direction: column; gap: 6px; }
+.smb-wrap .smb-range { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px solid currentColor; border-color: rgba(0, 0, 0, .15); border-radius: 6px; }
+.smb-wrap .smb-range.is-selected { border-color: currentColor; font-weight: 600; }
+.smb-wrap .smb-ranges-summary { margin-top: 8px; }
+.smb-wrap .smb-ranges-note { margin: 6px 0 0; font-size: .85em; opacity: .75; }
