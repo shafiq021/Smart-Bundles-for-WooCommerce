@@ -10,6 +10,8 @@ class SMB_Source {
 		add_action( 'save_post_product', array( __CLASS__, 'bump_cache' ) );
 		add_action( 'woocommerce_update_product', array( __CLASS__, 'bump_cache' ) );
 		add_action( 'woocommerce_product_set_stock_status', array( __CLASS__, 'bump_cache' ) );
+		add_action( 'woocommerce_update_product_variation', array( __CLASS__, 'bump_cache' ) );
+		add_action( 'woocommerce_variation_set_stock_status', array( __CLASS__, 'bump_cache' ) );
 	}
 
 	/* ---------------------------------------------------------------
@@ -17,7 +19,9 @@ class SMB_Source {
 	 * ------------------------------------------------------------- */
 
 	/**
-	 * Picked products: [ ['id' => int, 'badge' => string], ... ] in the order the admin arranged them.
+	 * Picked products: [ ['id' => int, 'variation_id' => int, 'badge' => string], ... ] in the order
+	 * the admin arranged them. variation_id 0 = simple product, or a variable product whose
+	 * variation the shopper chooses. Rows saved before variations existed have no variation_id (= 0).
 	 * Falls back to the old "_smb_manual" list from version 1.0.
 	 */
 	private static function stored_items( $product_id ) {
@@ -33,14 +37,17 @@ class SMB_Source {
 		$items = array();
 		$seen  = array();
 		foreach ( (array) $raw as $r ) {
-			$id = isset( $r['id'] ) ? absint( $r['id'] ) : 0;
-			if ( ! $id || $id === $product_id || isset( $seen[ $id ] ) ) {
+			$id  = isset( $r['id'] ) ? absint( $r['id'] ) : 0;
+			$vid = isset( $r['variation_id'] ) ? absint( $r['variation_id'] ) : 0;
+			$key = $id . ':' . $vid;
+			if ( ! $id || $id === $product_id || isset( $seen[ $key ] ) ) {
 				continue;
 			}
-			$seen[ $id ] = true;
-			$items[]     = array(
-				'id'    => $id,
-				'badge' => isset( $r['badge'] ) ? (string) $r['badge'] : '',
+			$seen[ $key ] = true;
+			$items[]      = array(
+				'id'           => $id,
+				'variation_id' => $vid,
+				'badge'        => isset( $r['badge'] ) ? (string) $r['badge'] : '',
 			);
 		}
 		return $items;
@@ -110,22 +117,28 @@ class SMB_Source {
 			return ( '' === $v || null === $v ) ? $default : $v;
 		};
 
-		$items = array();
-		$seen  = array();
+		// 'rows' is the full list ([ ['id', 'variation_id'], ... ]); 'items' keeps the plain list of
+		// product ids that earlier versions returned.
+		$rows = array();
+		$seen = array();
 		foreach ( (array) get_post_meta( $product_id, '_smb_bundle_items', true ) as $r ) {
-			$id = is_array( $r ) ? absint( $r['id'] ?? 0 ) : absint( $r );
-			if ( ! $id || $id === $product_id || isset( $seen[ $id ] ) ) {
+			$id  = is_array( $r ) ? absint( $r['id'] ?? 0 ) : absint( $r );
+			$vid = is_array( $r ) ? absint( $r['variation_id'] ?? 0 ) : 0;
+			$key = $id . ':' . $vid;
+			if ( ! $id || $id === $product_id || isset( $seen[ $key ] ) ) {
 				continue;
 			}
-			$seen[ $id ] = true;
-			$items[]     = $id;
+			$seen[ $key ] = true;
+			$rows[]       = array( 'id' => $id, 'variation_id' => $vid );
 		}
+		$items = array_values( array_unique( wp_list_pluck( $rows, 'id' ) ) );
 
 		$g = SMB_Settings::all();
 
 		return array(
-			'on'    => 'yes' === $meta( 'on', 'no' ) && ! empty( $items ),
+			'on'    => 'yes' === $meta( 'on', 'no' ) && ! empty( $rows ),
 			'items' => $items,
+			'rows'  => $rows,
 			'title' => (string) $meta( 'title', '' ), // '' = use the global heading
 			'name'  => '' !== (string) $meta( 'name', '' ) ? (string) $meta( 'name', '' ) : (string) $g['bundle_name_default'],
 			'badge' => (string) $meta( 'badge', '' ),
@@ -157,9 +170,9 @@ class SMB_Source {
 	}
 
 	/**
-	 * @return array[] [ ['id' => int, 'badge' => string], ... ] simple, purchasable products only.
-	 *                 Hand-picked products come first (in the admin's order, with their badges),
-	 *                 then the automatic ones.
+	 * @return array[] [ ['id' => int, 'variation_id' => int, 'badge' => string], ... ] purchasable
+	 *                 products only. Hand-picked products (simple or variable) come first, in the
+	 *                 admin's order with their badges, then the automatic ones (simple only).
 	 */
 	public static function get_items( $main_id ) {
 		$main_id = absint( $main_id );
@@ -186,26 +199,27 @@ class SMB_Source {
 		// 2) top up from the automatic source
 		if ( 'manual_only' !== $c['pick_from'] && count( $candidates ) < $c['limit'] ) {
 			foreach ( self::query_ids( $main_id, $c, $c['limit'] * 3 ) as $id ) {
-				$candidates[] = array( 'id' => $id, 'badge' => '' );
+				$candidates[] = array( 'id' => $id, 'variation_id' => 0, 'badge' => '', 'auto' => true );
 			}
 		}
 
-		// 3) clean up: unique, not the main product, simple + purchasable (+ in stock)
+		// 3) clean up: unique, not the main product, purchasable (+ in stock). Hand-picked products
+		// may be simple or variable (a pinned variation, or one the shopper chooses); the automatic
+		// top-up stays simple-only.
 		$hide_oos = 'yes' === SMB_Settings::get( 'fbt_hide_oos' );
 		$clean    = array();
 		foreach ( $candidates as $it ) {
-			$id = absint( $it['id'] );
-			if ( ! $id || $id === $main_id || isset( $clean[ $id ] ) ) {
+			$id  = absint( $it['id'] );
+			$vid = isset( $it['variation_id'] ) ? absint( $it['variation_id'] ) : 0;
+			$row = $id . ':' . $vid; // not $key: that is the transient key used below
+			if ( ! $id || $id === $main_id || isset( $clean[ $row ] ) ) {
 				continue;
 			}
-			$p = wc_get_product( $id );
-			if ( ! $p || 'publish' !== $p->get_status() || ! $p->is_type( 'simple' ) || ! $p->is_purchasable() ) {
+			$r = SMB_Variations::resolve( $id, $vid, 0, $hide_oos );
+			if ( ! $r || ( ! empty( $it['auto'] ) && ! $r['product']->is_type( 'simple' ) ) ) {
 				continue;
 			}
-			if ( $hide_oos && ! $p->is_in_stock() ) {
-				continue;
-			}
-			$clean[ $id ] = array( 'id' => $id, 'badge' => (string) $it['badge'] );
+			$clean[ $row ] = array( 'id' => $id, 'variation_id' => $vid, 'badge' => isset( $it['badge'] ) ? (string) $it['badge'] : '' );
 			if ( count( $clean ) >= $c['limit'] ) {
 				break;
 			}
@@ -226,18 +240,20 @@ class SMB_Source {
 	 * Suggestions for the cart page: the bought-together products of everything in the cart,
 	 * minus what is already in the cart.
 	 *
-	 * @return array[] [ ['id' => int, 'badge' => string], ... ]
+	 * @return array[] [ ['id' => int, 'variation_id' => int, 'badge' => string], ... ]
 	 */
 	public static function cart_items() {
 		if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
 			return array();
 		}
-		$in_cart = array();
+		$in_cart = array(); // product ids in the cart (any variation)
+		$in_vars = array(); // variation ids in the cart
 		$mains   = array();
 		foreach ( WC()->cart->get_cart() as $line ) {
 			$in_cart[ (int) $line['product_id'] ] = true;
 			if ( ! empty( $line['variation_id'] ) ) {
 				$in_cart[ (int) $line['variation_id'] ] = true;
+				$in_vars[ (int) $line['variation_id'] ] = true;
 			}
 			$mains[] = (int) $line['product_id'];
 		}
@@ -246,10 +262,15 @@ class SMB_Source {
 		$out   = array();
 		foreach ( array_unique( $mains ) as $main ) {
 			foreach ( self::get_items( $main ) as $it ) {
-				if ( isset( $in_cart[ $it['id'] ] ) || isset( $out[ $it['id'] ] ) ) {
+				$vid = isset( $it['variation_id'] ) ? (int) $it['variation_id'] : 0;
+				$key = $it['id'] . ':' . $vid;
+				// A pinned variation only counts as "already in the cart" when that exact variation is;
+				// otherwise any line of the product does.
+				$already = $vid ? isset( $in_vars[ $vid ] ) : isset( $in_cart[ $it['id'] ] );
+				if ( $already || isset( $out[ $key ] ) ) {
 					continue;
 				}
-				$out[ $it['id'] ] = $it;
+				$out[ $key ] = $it;
 				if ( count( $out ) >= $limit ) {
 					break 2;
 				}

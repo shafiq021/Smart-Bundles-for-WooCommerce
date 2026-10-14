@@ -10,7 +10,8 @@ class SMB_Admin {
 		add_action( 'add_meta_boxes', array( __CLASS__, 'add_box' ) );
 		add_action( 'save_post_product', array( __CLASS__, 'save' ), 10, 2 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
-		add_filter( 'plugin_action_links_' . plugin_basename( SMB_FILE ), function ( $links ) {
+		add_action( 'wp_ajax_smb_search_products', array( __CLASS__, 'ajax_search_products' ) );
+add_filter( 'plugin_action_links_' . plugin_basename( SMB_FILE ), function ( $links ) {
 			array_unshift( $links, '<a href="' . esc_url( admin_url( 'admin.php?page=smart-bundles' ) ) . '">Settings</a>' );
 			return $links;
 		} );
@@ -70,13 +71,14 @@ class SMB_Admin {
 	 * "Bundle offer" table (no badge column — the bundle has one badge for the whole deal).
 	 * ------------------------------------------------------------- */
 
-	private static function item_row( $i, $id, $thumb_html, $name, $name_prefix, $badge = null ) {
+	private static function item_row( $i, $id, $vid, $thumb_html, $name, $name_prefix, $badge = null ) {
 		?>
 		<tr class="smb-item-row">
 			<td class="smb-col-handle" title="Drag to re-order"><span class="dashicons dashicons-menu"></span></td>
 			<td class="smb-col-product">
 				<input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[<?php echo esc_attr( $i ); ?>][id]" value="<?php echo esc_attr( $id ); ?>"/>
-				<span class="smb-thumb"><?php echo wp_kses_post( $thumb_html ); ?></span>
+				<input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[<?php echo esc_attr( $i ); ?>][variation_id]" value="<?php echo esc_attr( $vid ); ?>"/>
+<span class="smb-thumb"><?php echo wp_kses_post( $thumb_html ); ?></span>
 				<span class="smb-pname"><?php echo esc_html( $name ); ?></span>
 			</td>
 			<?php if ( null !== $badge ) : ?>
@@ -96,7 +98,7 @@ class SMB_Admin {
 		?>
 		<div class="smb-item-picker" data-group="<?php echo esc_attr( $group ); ?>">
 			<p>
-				<select class="wc-product-search smb-product-search" style="width:100%;max-width:560px" data-placeholder="Search for a product to add…" data-action="woocommerce_json_search_products" data-exclude_type="variable" data-exclude="<?php echo esc_attr( $exclude_id ); ?>" data-allow_clear="true">
+				<select class="wc-product-search smb-product-search" style="width:100%;max-width:560px" data-placeholder="Search for a product to add…" data-action="smb_search_products" data-exclude="<?php echo esc_attr( $exclude_id ); ?>" data-allow_clear="true">
 					<option></option>
 				</select>
 			</p>
@@ -106,18 +108,20 @@ class SMB_Admin {
 					<?php
 					$n = 0;
 					foreach ( $rows as $it ) {
-						$p = wc_get_product( $it['id'] );
-						if ( ! $p ) {
+						$vid   = isset( $it['variation_id'] ) ? absint( $it['variation_id'] ) : 0;
+						$label = SMB_Variations::admin_label( $it['id'], $vid );
+						$p     = wc_get_product( $vid ? $vid : $it['id'] ); // a variation falls back to its parent's image
+						if ( ! $p || '' === $label ) {
 							continue;
 						}
-						self::item_row( $n++, $it['id'], $p->get_image( array( 36, 36 ) ), $p->get_name(), $group . '_items', $badges ? $it['badge'] : null );
+						self::item_row( $n++, $it['id'], $vid, $p->get_image( array( 36, 36 ) ), $label, $group . '_items', $badges ? $it['badge'] : null );
 					}
 					?>
 				</tbody>
 			</table>
 			<p class="smb-empty description"<?php echo $n ? ' style="display:none"' : ''; ?>>No products picked yet. Search above to add some<?php echo 'fbt' === $group ? ', or leave the list empty and let the plugin fill it automatically' : ''; ?>.</p>
 			<span class="smb-items-next" data-next="<?php echo esc_attr( $n ); ?>"></span>
-			<script type="text/html" class="smb-item-tpl"><?php self::item_row( '__i__', '__id__', '', '', $group . '_items', $badges ? '' : null ); ?></script>
+			<script type="text/html" class="smb-item-tpl"><?php self::item_row( '__i__', '__id__', '__vid__', '', '', $group . '_items', $badges ? '' : null ); ?></script>
 		</div>
 		<?php
 	}
@@ -211,7 +215,7 @@ class SMB_Admin {
 
 			<p class="smb-if-cats"><label><strong>Categories</strong></label><br/><?php self::terms_select( 'smb_cats', 'product_cat', $c['cats'] ); ?></p>
 			<p class="smb-if-tags"><label><strong>Tags</strong></label><br/><?php self::terms_select( 'smb_tags', 'product_tag', $c['tags'] ); ?></p>
-			<p class="description">Only simple, purchasable products are suggested. Add-ons are sold at their normal price. Automatically filled products show no badge.</p>
+			<p class="description">Add-ons are sold at their normal price. Automatically filled products are simple products only and show no badge. A variable product you pick yourself can be pinned to one variation, or left for the shopper to choose.</p>
 
 			<hr/>
 
@@ -253,7 +257,7 @@ class SMB_Admin {
 			</div>
 
 			<p><label><strong>Other products in this bundle</strong></label></p>
-			<?php self::item_picker( 'bundle', $post->ID, array_map( function ( $id ) { return array( 'id' => $id ); }, $bc['items'] ), false ); ?>
+			<?php self::item_picker( 'bundle', $post->ID, $bc['rows'], false ); ?>
 		</div>
 		<?php
 	}
@@ -324,26 +328,38 @@ class SMB_Admin {
 
 		$bundle_items = array();
 		foreach ( self::parsed_items( 'bundle_items', $post_id, false ) as $r ) {
-			$bundle_items[] = array( 'id' => $r['id'] );
+			$bundle_items[] = array( 'id' => $r['id'], 'variation_id' => $r['variation_id'] );
 		}
 		update_post_meta( $post_id, '_smb_bundle_items', $bundle_items );
 	}
 
 	/**
-	 * Read one picked-products table from $_POST: unique ids, not the product itself,
-	 * in the order the admin arranged them.
+	 * Read one picked-products table from $_POST: unique product + variation pairs, not the product
+	 * itself, in the order the admin arranged them. A variation id is only kept when it really is a
+	 * variation of that product.
 	 */
 	private static function parsed_items( $field, $post_id, $with_badge ) {
 		$items = array();
 		$seen  = array();
 		if ( isset( $_POST[ $field ] ) && is_array( $_POST[ $field ] ) ) {
 			foreach ( wp_unslash( $_POST[ $field ] ) as $r ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-				$id = isset( $r['id'] ) ? absint( $r['id'] ) : 0;
-				if ( ! $id || $id === (int) $post_id || isset( $seen[ $id ] ) ) {
+				$id  = isset( $r['id'] ) ? absint( $r['id'] ) : 0;
+				$vid = isset( $r['variation_id'] ) ? absint( $r['variation_id'] ) : 0;
+				if ( ! $id || $id === (int) $post_id ) {
 					continue;
 				}
-				$seen[ $id ] = true;
-				$row         = array( 'id' => $id );
+				if ( $vid ) {
+					$v = wc_get_product( $vid );
+					if ( ! $v || ! $v->is_type( 'variation' ) || (int) $v->get_parent_id() !== $id ) {
+						continue; // not a variation of this product: drop the row rather than guess
+					}
+				}
+				$key = $id . ':' . $vid;
+				if ( isset( $seen[ $key ] ) ) {
+					continue;
+				}
+				$seen[ $key ] = true;
+				$row          = array( 'id' => $id, 'variation_id' => $vid );
 				if ( $with_badge ) {
 					$row['badge'] = sanitize_text_field( isset( $r['badge'] ) ? $r['badge'] : '' );
 				}
@@ -351,5 +367,62 @@ class SMB_Admin {
 			}
 		}
 		return $items;
+	}
+
+	/* ---------------------------------------------------------------
+	 * Picker search (AJAX)
+	 * ------------------------------------------------------------- */
+
+	/**
+	 * Product search for the pickers. Same contract as WooCommerce's own search, which is what the
+	 * enhanced-select field expects: a { value: label } object, with the same "search-products" nonce.
+	 * Values are "productId:variationId" tokens: simple products and variable products ("shopper
+	 * chooses", variation 0) are returned, and so is each matching variation (pinned).
+	 */
+	public static function ajax_search_products() {
+		check_ajax_referer( 'search-products', 'security' );
+		if ( ! current_user_can( 'edit_products' ) ) {
+			wp_die( -1 );
+		}
+
+		$term    = isset( $_GET['term'] ) ? (string) wc_clean( wp_unslash( $_GET['term'] ) ) : '';
+		$exclude = isset( $_GET['exclude'] ) ? absint( $_GET['exclude'] ) : 0;
+		if ( '' === $term ) {
+			wp_send_json( array() );
+		}
+
+		$limit = (int) apply_filters( 'smb_search_limit', 30 );
+		$found = WC_Data_Store::load( 'product' )->search_products( $term, '', true, false, $limit * 2, array(), $exclude ? array( $exclude ) : array() );
+
+		$out = array();
+		foreach ( $found as $pid ) {
+			$p = wc_get_product( $pid );
+			if ( ! $p ) {
+				continue;
+			}
+			$vid       = $p->is_type( 'variation' ) ? (int) $pid : 0;
+			$parent_id = $vid ? (int) $p->get_parent_id() : (int) $pid;
+			if ( $parent_id === $exclude ) {
+				continue; // the product being edited, or one of its own variations
+			}
+			$parent = $vid ? wc_get_product( $parent_id ) : $p;
+			if ( ! $parent || 'publish' !== $parent->get_status() ) {
+				continue;
+			}
+			if ( $vid ? ! $p->is_purchasable() : ! ( $parent->is_type( 'variable' ) || ( $parent->is_type( 'simple' ) && $parent->is_purchasable() ) ) ) {
+				continue;
+			}
+			$label = SMB_Variations::admin_label( $parent_id, $vid );
+			if ( '' === $label ) {
+				continue;
+			}
+			// The trailing "(#id)" is what the picker script strips when it builds the table row.
+			$out[ $parent_id . ':' . $vid ] = wp_strip_all_tags( $label ) . ' (#' . ( $vid ? $vid : $parent_id ) . ')';
+			if ( count( $out ) >= $limit ) {
+				break;
+			}
+		}
+
+		wp_send_json( $out );
 	}
 }

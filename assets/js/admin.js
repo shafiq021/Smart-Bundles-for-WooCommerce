@@ -62,11 +62,18 @@
 				var d = e.params && e.params.data ? e.params.data : null;
 				var $sel = $(this);
 				if (d && d.id) {
-					var id = String(d.id);
-					var exists = $tbody.find('input[name$="[id]"]').filter(function () { return this.value === id; }).length > 0;
-					if (!exists) {
+					// Picker values are "productId:variationId" (variation 0 = a simple product, or a
+					// variable product whose variation the shopper chooses).
+					var bits = String(d.id).split(':');
+					var id = String(parseInt(bits[0], 10) || 0);
+					var vid = String(parseInt(bits[1], 10) || 0);
+					var exists = $tbody.children('tr').filter(function () {
+						var $r = $(this);
+						return $r.find('input[name$="[id]"]').val() === id && $r.find('input[name$="[variation_id]"]').val() === vid;
+					}).length > 0;
+					if (id !== '0' && !exists) {
 						var i = parseInt($next.attr('data-next'), 10) || 0;
-						var html = $tpl.html().replace(/__i__/g, i).replace(/__id__/g, id);
+						var html = $tpl.html().replace(/__i__/g, i).replace(/__id__/g, id).replace(/__vid__/g, vid);
 						var $row = $(html);
 						$row.find('.smb-pname').text(String(d.text || '').replace(/\s*\(#\d+\)\s*$/, ''));
 						$tbody.append($row);

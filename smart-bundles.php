@@ -31,6 +31,7 @@ add_action( 'plugins_loaded', function () {
 
 	require_once SMB_DIR . 'includes/class-smb-style.php';
 	require_once SMB_DIR . 'includes/class-smb-settings.php';
+	require_once SMB_DIR . 'includes/class-smb-variations.php';
 	require_once SMB_DIR . 'includes/class-smb-source.php';
 	require_once SMB_DIR . 'includes/class-smb-pricing.php';
 	require_once SMB_DIR . 'includes/class-smb-frontend.php';

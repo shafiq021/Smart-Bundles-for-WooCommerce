@@ -17,9 +17,11 @@
  */
 defined( 'ABSPATH' ) || exit;
 
-$demo = ! empty( $demo );
+$demo  = ! empty( $demo );
+$type  = isset( $type ) ? $type : 'percent'; // how the discount is worked out: percent | fixed
+$value = isset( $value ) ? $value : 0;
 ?>
-<div class="smb-wrap smb-offer-wrap" data-smb="bundle">
+<div class="smb-wrap smb-offer-wrap" data-smb="bundle" data-type="<?php echo esc_attr( $type ); ?>" data-value="<?php echo esc_attr( $value ); ?>">
 
 	<?php if ( '' !== $title ) : ?>
 		<div class="smb-title"><span><?php echo esc_html( $title ); ?></span></div>
@@ -38,27 +40,37 @@ $demo = ! empty( $demo );
 			</span>
 			<span class="smb-bundle-price">
 				<span class="smb-price"><?php echo wp_kses_post( wc_price( $total ) ); ?></span>
-				<?php if ( $save > 0 ) : ?>
-					<del class="smb-strike"><?php echo wp_kses_post( wc_price( $reg_total ) ); ?></del>
-				<?php endif; ?>
+				<del class="smb-strike smb-bundle-strike<?php echo $save > 0 ? '' : ' is-hidden'; ?>"><?php echo wp_kses_post( wc_price( $reg_total ) ); ?></del>
 			</span>
 		</label>
 
-		<?php if ( $save > 0 ) : ?>
-			<p class="smb-bundle-save"><?php /* translators: %s: amount saved */ echo wp_kses_post( sprintf( esc_html__( 'Save %s!', 'smart-bundles' ), wc_price( $save ) ) ); ?></p>
-		<?php endif; ?>
+		<p class="smb-bundle-save<?php echo $save > 0 ? '' : ' is-hidden'; ?>"><?php /* translators: %s: amount saved */ echo wp_kses_post( sprintf( esc_html__( 'Save %s!', 'smart-bundles' ), wc_price( $save ) ) ); ?></p>
 
 		<div class="smb-bundle-items">
 			<?php foreach ( $rows as $i => $r ) : ?>
-				<div class="smb-bundle-item">
+				<div class="smb-bundle-item"
+					data-key="<?php echo esc_attr( isset( $r['key'] ) ? $r['key'] : $i ); ?>"
+					data-id="<?php echo esc_attr( isset( $r['id'] ) ? $r['id'] : 0 ); ?>"
+					data-current="<?php echo esc_attr( isset( $r['current'] ) ? $r['current'] : $r['unit'] ); ?>"
+					data-regular="<?php echo esc_attr( $r['regular'] ); ?>">
 					<?php if ( $i > 0 ) : ?><span class="smb-bundle-plus" aria-hidden="true">+</span><?php endif; ?>
 					<span class="smb-bundle-item-img"><?php echo wp_kses_post( $r['image'] ); ?></span>
-					<span class="smb-bundle-item-name"><?php echo esc_html( $r['name'] ); ?></span>
+					<span class="smb-bundle-item-name">
+						<?php echo esc_html( $r['name'] ); ?>
+						<?php if ( ! empty( $r['options'] ) ) : ?>
+							<select class="smb-var-select" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: product name */ __( 'Choose a variation of %s', 'smart-bundles' ), $r['name'] ) ); ?>">
+								<?php foreach ( $r['options'] as $o ) : ?>
+									<option value="<?php echo esc_attr( $o['id'] ); ?>"
+										data-current="<?php echo esc_attr( $o['current'] ); ?>"
+										data-regular="<?php echo esc_attr( $o['regular'] ); ?>"
+										<?php selected( (int) $o['id'], (int) $r['variation_id'] ); ?>><?php echo esc_html( $o['label'] ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						<?php endif; ?>
+					</span>
 					<span class="smb-bundle-item-price">
 						<span class="smb-price"><?php echo wp_kses_post( wc_price( $r['unit'] ) ); ?></span>
-						<?php if ( $r['regular'] > $r['unit'] ) : ?>
-							<del class="smb-strike"><?php echo wp_kses_post( wc_price( $r['regular'] ) ); ?></del>
-						<?php endif; ?>
+						<del class="smb-strike<?php echo $r['regular'] > $r['unit'] ? '' : ' is-hidden'; ?>"><?php echo wp_kses_post( wc_price( $r['regular'] ) ); ?></del>
 					</span>
 				</div>
 			<?php endforeach; ?>

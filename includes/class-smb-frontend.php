@@ -59,6 +59,8 @@ class SMB_Frontend {
 				'selected' => __( 'selected', 'smart-bundles' ),
 				'save'     => __( 'Save', 'smart-bundles' ),
 				'youSave'  => __( 'You save', 'smart-bundles' ),
+				/* translators: %s: amount saved */
+				'bundleSave' => __( 'Save %s!', 'smart-bundles' ),
 				'error'    => __( 'Sorry, those products could not be added. Please try again.', 'smart-bundles' ),
 			),
 		) );
@@ -271,26 +273,44 @@ class SMB_Frontend {
 	 * ------------------------------------------------------------- */
 
 	/**
-	 * Turn [ ['id','badge'], ... ] into the rows the template needs. No discounts: normal prices.
+	 * Turn [ ['id','variation_id','badge'], ... ] into the rows the template needs. No discounts:
+	 * normal prices. A variable product is either pinned to one variation (shown as a normal row) or
+	 * carries 'options' so the shopper can choose (the first option is pre-selected, and its price
+	 * is the one shown).
 	 */
 	private static function build_items( $list, $preselect, $link ) {
 		$items = array();
 		foreach ( $list as $row ) {
-			$p = wc_get_product( $row['id'] );
-			if ( ! $p ) {
+			$vid = isset( $row['variation_id'] ) ? absint( $row['variation_id'] ) : 0;
+			$r   = SMB_Variations::resolve( $row['id'], $vid, 0, false );
+			if ( ! $r ) {
 				continue;
 			}
-			list( $current, $regular ) = self::display_prices( $p );
+			$p = $r['product'];
+			list( $current, $regular ) = self::display_prices( $r['purchase'] );
+
+			$options = array();
+			foreach ( $r['options'] as $o ) {
+				list( $o_cur, $o_reg ) = self::display_prices( $o['product'] );
+				$options[]             = array(
+					'id'      => $o['id'],
+					'label'   => $o['label'],
+					'price'   => $o_cur,
+					'regular' => $o_reg,
+				);
+			}
 
 			$items[] = array(
-				'id'      => (int) $row['id'],
-				'name'    => $p->get_name(),
-				'url'     => $link ? get_permalink( $row['id'] ) : '',
-				'image'   => $p->get_image( 'woocommerce_gallery_thumbnail', array( 'loading' => 'lazy' ) ),
-				'price'   => $current,
-				'regular' => $regular,
-				'badge'   => (string) $row['badge'],
-				'checked' => $preselect,
+				'id'           => (int) $row['id'],
+				'variation_id' => $r['variation_id'],
+				'options'      => $options,
+				'name'         => $r['pinned'] ? SMB_Variations::admin_label( $row['id'], $r['variation_id'] ) : $p->get_name(),
+				'url'          => $link ? get_permalink( $row['id'] ) : '',
+				'image'        => $r['purchase']->get_image( 'woocommerce_gallery_thumbnail', array( 'loading' => 'lazy' ) ),
+				'price'        => $current,
+				'regular'      => $regular,
+				'badge'        => isset( $row['badge'] ) ? (string) $row['badge'] : '',
+				'checked'      => $preselect,
 			);
 		}
 		return $items;
@@ -362,17 +382,35 @@ class SMB_Frontend {
 		}
 
 		list( $main_cur, $main_reg ) = self::display_prices( $product );
-		$rows   = array( array( 'id' => $id, 'name' => $product->get_name(), 'image' => $product->get_image( 'woocommerce_gallery_thumbnail', array( 'loading' => 'lazy' ) ), 'current' => $main_cur, 'regular' => $main_reg ) );
-		$prices = array( $id => $main_cur );
+		$img    = array( 'loading' => 'lazy' );
+		$rows   = array( array( 'key' => 'main', 'id' => $id, 'variation_id' => 0, 'options' => array(), 'name' => $product->get_name(), 'image' => $product->get_image( 'woocommerce_gallery_thumbnail', $img ), 'current' => $main_cur, 'regular' => $main_reg ) );
+		$prices = array( 'main' => $main_cur );
 
-		foreach ( $cfg['items'] as $iid ) {
-			$p = wc_get_product( $iid );
-			if ( ! $p || ! $p->is_purchasable() || ! $p->is_in_stock() ) {
+		foreach ( $cfg['rows'] as $row ) {
+			$r = SMB_Variations::resolve( $row['id'], $row['variation_id'] );
+			if ( ! $r ) {
 				continue;
 			}
-			list( $cur, $reg ) = self::display_prices( $p );
-			$rows[]           = array( 'id' => $iid, 'name' => $p->get_name(), 'image' => $p->get_image( 'woocommerce_gallery_thumbnail', array( 'loading' => 'lazy' ) ), 'current' => $cur, 'regular' => $reg );
-			$prices[ $iid ]    = $cur;
+			list( $cur, $reg ) = self::display_prices( $r['purchase'] );
+
+			$options = array();
+			foreach ( $r['options'] as $o ) {
+				list( $o_cur, $o_reg ) = self::display_prices( $o['product'] );
+				$options[]             = array( 'id' => $o['id'], 'label' => $o['label'], 'current' => $o_cur, 'regular' => $o_reg );
+			}
+
+			$k             = $r['product_id'] . ':' . $r['variation_id'];
+			$rows[]        = array(
+				'key'          => $k,
+				'id'           => $r['product_id'],
+				'variation_id' => $r['variation_id'],
+				'options'      => $options,
+				'name'         => $r['pinned'] ? SMB_Variations::admin_label( $r['product_id'], $r['variation_id'] ) : $r['product']->get_name(),
+				'image'        => $r['purchase']->get_image( 'woocommerce_gallery_thumbnail', $img ),
+				'current'      => $cur,
+				'regular'      => $reg,
+			);
+			$prices[ $k ]  = $cur;
 		}
 		if ( count( $rows ) < 2 ) {
 			return ''; // need at least one other product to call it a bundle
@@ -384,7 +422,7 @@ class SMB_Frontend {
 		$save      = max( 0, $reg_total - $calc['total'] );
 
 		foreach ( $rows as &$r ) {
-			$r['unit'] = $calc['units'][ $r['id'] ];
+			$r['unit'] = $calc['units'][ $r['key'] ];
 		}
 		unset( $r );
 
@@ -402,6 +440,8 @@ class SMB_Frontend {
 			'reg_total'     => $reg_total,
 			'save'          => $save,
 			'save_pct_text' => self::pct_text( $reg_total > 0 ? $save / $reg_total * 100 : 0 ),
+			'type'          => $cfg['type'],
+			'value'         => $cfg['value'],
 		) );
 		return ob_get_clean();
 	}
@@ -453,18 +493,13 @@ class SMB_Frontend {
 			wp_send_json_error( array( 'message' => 'bad nonce' ), 403 );
 		}
 
-		$requested = isset( $_POST['ids'] ) ? array_filter( array_map( 'absint', explode( ',', sanitize_text_field( wp_unslash( $_POST['ids'] ) ) ) ) ) : array();
-		// Never trust the browser: only what we would have suggested right now.
-		$allowed = array_map( 'absint', wp_list_pluck( SMB_Source::cart_items(), 'id' ) );
-		$ids     = array_values( array_intersect( array_unique( $requested ), $allowed ) );
+		$raw = isset( $_POST['ids'] ) ? sanitize_text_field( wp_unslash( $_POST['ids'] ) ) : '';
+		// Never trust the browser: only what we would have suggested right now ("id:variation_id" tokens).
+		$picks = SMB_Variations::resolve_tokens( $raw, SMB_Source::cart_items() );
 
 		$added = 0;
-		foreach ( $ids as $id ) {
-			$p = wc_get_product( $id );
-			if ( ! $p || ! $p->is_purchasable() || ! $p->is_in_stock() ) {
-				continue;
-			}
-			if ( WC()->cart->add_to_cart( $id, 1 ) ) {
+		foreach ( $picks as $r ) {
+			if ( WC()->cart->add_to_cart( $r['product_id'], 1, $r['variation_id'], $r['attrs'] ) ) {
 				$added++;
 			}
 		}

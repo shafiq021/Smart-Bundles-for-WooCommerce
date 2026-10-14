@@ -6,6 +6,7 @@
  *
  * @var WC_Product|null $product
  * @var array           $items        each: id, name, url, image, price, regular, badge, checked
+ *                                    and, for variable products, variation_id + options [ id, label, price, regular ]
  * @var string          $title
  * @var string          $context       'product' or 'cart'
  * @var string          $button_text   cart page button label
@@ -29,6 +30,7 @@ $demo         = ! empty( $demo );
 		<?php foreach ( $items as $it ) : ?>
 			<label class="smb-item<?php echo $it['checked'] ? ' is-selected' : ''; ?>"
 				data-id="<?php echo esc_attr( $it['id'] ); ?>"
+				data-vid="<?php echo esc_attr( ! empty( $it['variation_id'] ) ? $it['variation_id'] : 0 ); ?>"
 				data-price="<?php echo esc_attr( $it['price'] ); ?>">
 
 				<?php if ( '' !== $it['badge'] ) : ?>
@@ -48,6 +50,16 @@ $demo         = ! empty( $demo );
 							<?php echo esc_html( $it['name'] ); ?>
 						<?php endif; ?>
 					</span>
+					<?php if ( ! empty( $it['options'] ) ) : ?>
+						<select class="smb-var-select" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: product name */ __( 'Choose a variation of %s', 'smart-bundles' ), $it['name'] ) ); ?>">
+							<?php foreach ( $it['options'] as $o ) : ?>
+								<option value="<?php echo esc_attr( $o['id'] ); ?>"
+									data-price="<?php echo esc_attr( $o['price'] ); ?>"
+									data-regular="<?php echo esc_attr( $o['regular'] ); ?>"
+									<?php selected( (int) $o['id'], (int) $it['variation_id'] ); ?>><?php echo esc_html( $o['label'] ); ?></option>
+							<?php endforeach; ?>
+						</select>
+					<?php endif; ?>
 				</span>
 
 				<span class="smb-item-price">

@@ -437,3 +437,6 @@ form.cart.smb-hide-qty .quantity { display: none !important; }
 	.smb-wrap .smb-item-price .smb-price .amount { font-size: calc(var(--smb-item-price-size) * .8); }
 	.smb-wrap .smb-badge { right: 10px; }
 }
+
+/* Variation dropdown for variable add-ons / bundle items (functional only; V3 styles it) */
+.smb-wrap .smb-var-select { display: block; max-width: 100%; margin-top: 4px; }

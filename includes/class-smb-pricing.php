@@ -133,25 +133,20 @@ class SMB_Pricing {
 			return;
 		}
 
-		$requested = array_filter( array_map( 'absint', explode( ',', sanitize_text_field( wp_unslash( $_REQUEST['smb_addons'] ) ) ) ) ); // phpcs:ignore WordPress.Security.NonceVerification
-		if ( empty( $requested ) ) {
+		$raw = sanitize_text_field( wp_unslash( $_REQUEST['smb_addons'] ) ); // phpcs:ignore WordPress.Security.NonceVerification
+		if ( '' === $raw ) {
 			return;
 		}
 
-		// Never trust the browser: only products we would have shown.
-		$allowed = SMB_Source::get_item_ids( $product_id );
-		$ids     = array_values( array_intersect( array_unique( $requested ), $allowed ) );
-		if ( empty( $ids ) ) {
+		// Never trust the browser: only products we would have shown. Tokens are "id:variation_id".
+		$picks = SMB_Variations::resolve_tokens( $raw, SMB_Source::get_items( $product_id ) );
+		if ( empty( $picks ) ) {
 			return;
 		}
 
 		self::$adding = true;
-		foreach ( $ids as $id ) {
-			$p = wc_get_product( $id );
-			if ( ! $p || ! $p->is_purchasable() || ! $p->is_in_stock() ) {
-				continue;
-			}
-			WC()->cart->add_to_cart( $id, 1 );
+		foreach ( $picks as $r ) {
+			WC()->cart->add_to_cart( $r['product_id'], 1, $r['variation_id'], $r['attrs'] );
 		}
 		self::$adding = false;
 
@@ -178,15 +173,20 @@ class SMB_Pricing {
 			return;
 		}
 
+		// Variations the shopper picked on the page ("id:variation_id" tokens). Pinned variations
+		// come from the bundle's own config and cannot be overridden from the browser.
+		$chosen = SMB_Variations::requested_map( isset( $_REQUEST['smb_bundle_pick'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['smb_bundle_pick'] ) ) : '' ); // phpcs:ignore WordPress.Security.NonceVerification
+
 		$prices = array( 'main' => (float) $main_product->get_price() );
 		$items  = array();
-		foreach ( $cfg['items'] as $iid ) {
-			$p = wc_get_product( $iid );
-			if ( ! $p || $p->is_type( 'variable' ) || ! $p->is_purchasable() || ! $p->is_in_stock() ) {
+		foreach ( $cfg['rows'] as $row ) {
+			$r = SMB_Variations::resolve( $row['id'], $row['variation_id'], isset( $chosen[ $row['id'] ] ) ? $chosen[ $row['id'] ] : 0 );
+			if ( ! $r ) {
 				continue;
 			}
-			$items[ $iid ]  = $p;
-			$prices[ $iid ] = (float) $p->get_price();
+			$k            = $r['product_id'] . ':' . $r['variation_id'];
+			$items[ $k ]  = $r;
+			$prices[ $k ] = (float) $r['purchase']->get_price(); // the variation's own price, not the parent's
 		}
 		if ( empty( $items ) ) {
 			return;
@@ -201,15 +201,15 @@ class SMB_Pricing {
 		WC()->cart->cart_contents[ $cart_item_key ]['smb_bundle_name']  = $label;
 
 		$children = array();
-		foreach ( $items as $iid => $p ) {
-			$child_key = WC()->cart->add_to_cart( $iid, 1, 0, array(), array(
-				'smb_bundle_price'      => $calc['units'][ $iid ],
+		foreach ( $items as $k => $r ) {
+			$child_key = WC()->cart->add_to_cart( $r['product_id'], 1, $r['variation_id'], $r['attrs'], array(
+				'smb_bundle_price'      => $calc['units'][ $k ],
 				'smb_bundle_name'       => $label,
 				'smb_bundle_parent_key' => $cart_item_key,
 			) );
 			if ( $child_key ) {
 				$children[] = $child_key;
-				WC()->cart->cart_contents[ $child_key ]['smb_bundle_price']      = $calc['units'][ $iid ];
+				WC()->cart->cart_contents[ $child_key ]['smb_bundle_price']      = $calc['units'][ $k ];
 				WC()->cart->cart_contents[ $child_key ]['smb_bundle_name']       = $label;
 				WC()->cart->cart_contents[ $child_key ]['smb_bundle_parent_key'] = $cart_item_key;
 			}
@@ -219,7 +219,7 @@ class SMB_Pricing {
 		}
 
 		self::$bundling = false;
-		unset( $_REQUEST['smb_bundle'] );
+		unset( $_REQUEST['smb_bundle'], $_REQUEST['smb_bundle_pick'] );
 	}
 
 	/**

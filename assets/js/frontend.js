@@ -142,19 +142,92 @@
 		if (!$input.length) {
 			$input = $('<input type="hidden" name="smb_bundle" value="">').appendTo($form);
 		}
+		// "productId:variationId" for every item the shopper picks a variation of
+		var $pick = $form.find('input[name="smb_bundle_pick"]');
+		if (!$pick.length) {
+			$pick = $('<input type="hidden" name="smb_bundle_pick" value="">').appendTo($form);
+		}
+		var $main = $wrap.find('.smb-bundle-item').first();
+		var mainOrig = { current: $main.attr('data-current'), regular: $main.attr('data-regular') };
+
+		function picks() {
+			var out = [];
+			$wrap.find('.smb-var-select').each(function () {
+				out.push($(this).closest('.smb-bundle-item').attr('data-id') + ':' + (this.value || '0'));
+			});
+			return out.join(',');
+		}
+
+		/* Same maths as SMB_Pricing::bundle_totals(), so the page matches what the cart will charge. */
+		function recalc() {
+			var type = $wrap.attr('data-type');
+			var val = Math.max(0, Math.min(type === 'fixed' ? Infinity : 100, parseFloat($wrap.attr('data-value')) || 0));
+			var rows = [];
+			var sum = 0;
+			var reg = 0;
+			$wrap.find('.smb-bundle-item').each(function () {
+				var $r = $(this);
+				var c = parseFloat($r.attr('data-current')) || 0;
+				var g = parseFloat($r.attr('data-regular'));
+				if (isNaN(g)) {
+					g = c;
+				}
+				rows.push({ $r: $r, c: c, g: g });
+				sum += c;
+				reg += g;
+			});
+			var total = type === 'fixed' ? val : sum * (100 - val) / 100;
+			$.each(rows, function (i, o) {
+				var share = sum > 0 ? o.c / sum : 1 / rows.length;
+				var unit = type === 'fixed' ? total * share : o.c * (100 - val) / 100;
+				o.$r.find('.smb-bundle-item-price .smb-price').html(fmt(unit));
+				o.$r.find('.smb-bundle-item-price .smb-strike').html(fmt(o.g)).toggleClass('is-hidden', !(o.g > unit));
+			});
+			var save = Math.max(0, reg - total);
+			$wrap.find('.smb-bundle-price .smb-price').html(fmt(total));
+			$wrap.find('.smb-bundle-strike').html(fmt(reg)).toggleClass('is-hidden', !(save > 0));
+			$wrap.find('.smb-bundle-save').html((T.bundleSave || 'Save %s!').replace('%s', fmt(save))).toggleClass('is-hidden', !(save > 0));
+		}
 
 		function update() {
 			var on = $check.is(':checked');
 			$card.toggleClass('is-selected', on);
 			$input.val(on ? '1' : '');
+			$pick.val(picks());
 		}
 
 		$check.on('change', update);
+
+		// The shopper picks a variation of one of the other products
+		$wrap.on('change', '.smb-var-select', function () {
+			var $o = $(this).find('option:selected');
+			$(this).closest('.smb-bundle-item')
+				.attr('data-current', $o.attr('data-current'))
+				.attr('data-regular', $o.attr('data-regular'));
+			recalc();
+			update();
+		});
+
+		// The main product is variable: its price follows the variation chosen in the form above
+		$form.on('found_variation', function (e, v) {
+			var cur = parseFloat(v.display_price);
+			var reg = parseFloat(v.display_regular_price);
+			if (isNaN(cur)) {
+				return;
+			}
+			$main.attr('data-current', cur).attr('data-regular', isNaN(reg) ? cur : reg);
+			recalc();
+		});
+		$form.on('reset_data hide_variation', function () {
+			$main.attr('data-current', mainOrig.current).attr('data-regular', mainOrig.regular);
+			recalc();
+		});
 
 		// Themes that add to cart with AJAX: make sure the toggle travels with the request.
 		$(document.body).on('adding_to_cart', function (e, $button, data) {
 			if (data && typeof data === 'object' && $check.is(':checked')) {
 				data.smb_bundle = '1';
+				data.smb_bundle_pick = picks();
 			}
 		});
 
@@ -163,15 +236,46 @@
 
 	/* ---------- bought together (shared bits) ---------- */
 
+	/** "productId:variationId" for a bought-together row (the variation comes from its dropdown, if it has one). */
+	function itemToken($i) {
+		var vid = $i.find('.smb-var-select').val() || $i.attr('data-vid') || '0';
+		return $i.attr('data-id') + ':' + vid;
+	}
+
 	function selectedInfo($wrap) {
 		var ids = [];
 		var total = 0;
 		$wrap.find('.smb-check:checked').each(function () {
 			var $i = $(this).closest('.smb-item');
-			ids.push($i.attr('data-id'));
+			ids.push(itemToken($i));
 			total += parseFloat($i.attr('data-price')) || 0;
 		});
 		return { ids: ids, total: total };
+	}
+
+	/** A variable add-on: its price follows the variation the shopper picks. */
+	function bindVariationSelects($wrap, onChange) {
+		$wrap.on('change', '.smb-var-select', function () {
+			var $i = $(this).closest('.smb-item');
+			var $o = $(this).find('option:selected');
+			var price = parseFloat($o.attr('data-price')) || 0;
+			var reg = parseFloat($o.attr('data-regular'));
+			if (isNaN(reg)) {
+				reg = price;
+			}
+			$i.attr('data-price', price).attr('data-vid', $o.val());
+			$i.find('.smb-item-price .smb-price').html(fmt(price));
+			var $strike = $i.find('.smb-item-price .smb-strike');
+			if (reg > price) {
+				if (!$strike.length) {
+					$strike = $('<del class="smb-strike"></del>').appendTo($i.find('.smb-item-price'));
+				}
+				$strike.html(fmt(reg));
+			} else {
+				$strike.remove();
+			}
+			onChange();
+		});
 	}
 
 	function renderSummary($wrap, info) {
@@ -206,6 +310,7 @@
 			$(this).closest('.smb-item').toggleClass('is-selected', this.checked);
 			update();
 		});
+		bindVariationSelects($wrap, update);
 
 		// Themes that add to cart with AJAX: make sure the ticked add-ons travel with the request.
 		$(document.body).on('adding_to_cart', function (e, $button, data) {
@@ -271,6 +376,7 @@
 			$(this).closest('.smb-item').toggleClass('is-selected', this.checked);
 			update();
 		});
+		bindVariationSelects($wrap, update);
 
 		$btn.on('click', function (e) {
 			e.preventDefault();
