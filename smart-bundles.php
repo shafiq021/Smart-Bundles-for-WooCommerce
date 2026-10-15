@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Smart Bundles for WooCommerce
  * Description: Pack offers (buy 1 / buy 2 ...), "frequently bought together" add-ons on the product page and cart page, and product badges. Fully styleable with a live preview.
- * Version: 1.2.0
+ * Version: 1.3.0
  * Author: Shafiqur Rehman
  * Text Domain: smart-bundles
  * Requires Plugins: woocommerce
@@ -13,7 +13,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'SMB_VERSION', '1.2.0' );
+define( 'SMB_VERSION', '1.3.0' );
 define( 'SMB_FILE', __FILE__ );
 define( 'SMB_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SMB_URL', plugin_dir_url( __FILE__ ) );

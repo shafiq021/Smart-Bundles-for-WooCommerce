@@ -4,10 +4,15 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Read-only REST API: /wp-json/smart-bundles/v1/{packs|bundles|fbt}[/<product id>]
  *
- * Collections list the products that currently show that kind of offer (paged, searchable) and are
- * for editors (edit_products); the Gutenberg blocks use them for their product picker. A single
- * offer is public for published products, because the same data is already printed on the shop
- * page, and needs edit rights for drafts / private products.
+ * Read-only (GET only). The rules, in order:
+ *  - the product post type must have show_in_rest on, otherwise every route answers 404 (a site that
+ *    keeps products out of the REST API does not get them back through this plugin);
+ *  - collections list the products that currently show that kind of offer (paged, searchable) and
+ *    need edit_products; the Gutenberg blocks use them for their product picker. A headless store
+ *    that wants a public list can open it with the smb_rest_can_list filter;
+ *  - a single offer is public for published products, because the same data is already printed on
+ *    the shop page. Drafts and private products need edit rights on that product, and a
+ *    password-protected product is only shown to someone who can edit it.
  */
 class SMB_REST {
 
@@ -25,6 +30,7 @@ class SMB_REST {
 					return self::collection( $request, $type );
 				},
 				'permission_callback' => array( __CLASS__, 'can_list' ),
+				'schema'              => array( __CLASS__, 'schema' ),
 				'args'                => array(
 					'search'   => array( 'type' => 'string', 'sanitize_callback' => 'sanitize_text_field' ),
 					'page'     => array( 'type' => 'integer', 'default' => 1, 'minimum' => 1, 'sanitize_callback' => 'absint' ),
@@ -37,23 +43,72 @@ class SMB_REST {
 					return self::single( $request, $type );
 				},
 				'permission_callback' => array( __CLASS__, 'can_read' ),
+				'schema'              => array( __CLASS__, 'schema' ),
 				'args'                => array(
-					'id'   => array( 'type' => 'integer', 'sanitize_callback' => 'absint' ),
+					'id' => array( 'type' => 'integer', 'minimum' => 1, 'sanitize_callback' => 'absint' ),
 				),
 			) );
 		}
 	}
 
+	/** Products are only offered here while WordPress itself offers them to the REST API. */
+	private static function exposed() {
+		$type = get_post_type_object( 'product' );
+		return $type && $type->show_in_rest;
+	}
+
+	private static function hidden() {
+		return new WP_Error( 'rest_no_route', __( 'No route was found matching the URL and request method.', 'smart-bundles' ), array( 'status' => 404 ) );
+	}
+
 	public static function can_list() {
-		return current_user_can( 'edit_products' );
+		if ( ! self::exposed() ) {
+			return self::hidden();
+		}
+		$allowed = current_user_can( 'edit_products' );
+		/**
+		 * Open the offer lists to everyone (headless stores) or close them further.
+		 *
+		 * @param bool $allowed Default: users who can edit products.
+		 */
+		$allowed = (bool) apply_filters( 'smb_rest_can_list', $allowed );
+		if ( ! $allowed ) {
+			return new WP_Error( 'rest_forbidden', __( 'Sorry, you are not allowed to list offers.', 'smart-bundles' ), array( 'status' => rest_authorization_required_code() ) );
+		}
+		return true;
 	}
 
 	public static function can_read( $request ) {
+		if ( ! self::exposed() ) {
+			return self::hidden();
+		}
 		$post = get_post( absint( $request['id'] ) );
 		if ( ! $post || 'product' !== $post->post_type ) {
-			return true; // the callback answers 404
+			return true; // the callback answers 404, so nothing about other post types is revealed
 		}
-		return 'publish' === $post->post_status || current_user_can( 'edit_post', $post->ID );
+		$can_edit = current_user_can( 'edit_post', $post->ID );
+		if ( ( 'publish' !== $post->post_status || post_password_required( $post ) ) && ! $can_edit ) {
+			return new WP_Error( 'rest_forbidden', __( 'Sorry, you are not allowed to view this offer.', 'smart-bundles' ), array( 'status' => rest_authorization_required_code() ) );
+		}
+		return true;
+	}
+
+	/** JSON schema of one offer (shown by OPTIONS requests and used by REST clients). */
+	public static function schema() {
+		return array(
+			'$schema'    => 'http://json-schema.org/draft-04/schema#',
+			'title'      => 'smart-bundles-offer',
+			'type'       => 'object',
+			'properties' => array(
+				'id'        => array( 'type' => 'integer', 'description' => 'Product id.', 'readonly' => true ),
+				'type'      => array( 'type' => 'string', 'enum' => array( 'packs', 'bundles', 'fbt' ), 'readonly' => true ),
+				'name'      => array( 'type' => 'string', 'readonly' => true ),
+				'permalink' => array( 'type' => 'string', 'format' => 'uri', 'readonly' => true ),
+				'thumbnail' => array( 'type' => 'string', 'description' => 'Thumbnail URL, empty when the product has no image.', 'readonly' => true ),
+				'layout'    => array( 'type' => 'string', 'enum' => array( 'list', 'grid', 'carousel' ), 'readonly' => true ),
+				'offer'     => array( 'type' => 'object', 'description' => 'The settings of the offer; the fields depend on the type.', 'readonly' => true ),
+			),
+		);
 	}
 
 	/* ------------------------------------------------------------- */
@@ -142,6 +197,13 @@ class SMB_REST {
 			'thumbnail' => wp_get_attachment_image_url( $product->get_image_id(), 'woocommerce_gallery_thumbnail' ) ?: '',
 			'layout'    => SMB_Source::layout( $id ),
 		);
+
+		$row = self::build_offer( $type, $product, $base );
+		return null === $row ? null : apply_filters( 'smb_rest_offer', $row, $type, $product );
+	}
+
+	private static function build_offer( $type, $product, $base ) {
+		$id = $product->get_id();
 
 		if ( 'bundles' === $type ) {
 			$c = SMB_Source::bundle_config( $id );
