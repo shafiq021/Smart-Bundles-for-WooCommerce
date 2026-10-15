@@ -267,6 +267,7 @@ class SMB_Frontend {
 			'title'    => $title,
 			'is_var'   => $product->is_type( 'variable' ),
 			'hide_qty' => 'yes' === SMB_Settings::get( 'hide_qty' ),
+			'layout'   => SMB_Source::layout( $id ),
 		) );
 		return ob_get_clean();
 	}
@@ -309,6 +310,7 @@ class SMB_Frontend {
 			'is_var'  => $product->is_type( 'variable' ),
 			'current' => $current,
 			'regular' => $regular,
+			'layout'  => SMB_Source::layout( $id ),
 		) );
 		return ob_get_clean();
 	}
@@ -401,6 +403,7 @@ class SMB_Frontend {
 			'title'        => $title,
 			'context'      => 'product',
 			'show_summary' => 'yes' === SMB_Settings::get( 'fbt_show_summary' ),
+			'layout'       => SMB_Source::layout( $id ),
 		) );
 		return ob_get_clean();
 	}
@@ -487,6 +490,7 @@ class SMB_Frontend {
 			'save_pct_text' => self::pct_text( $reg_total > 0 ? $save / $reg_total * 100 : 0 ),
 			'type'          => $cfg['type'],
 			'value'         => $cfg['value'],
+			'layout'        => SMB_Source::layout( $id ),
 		) );
 		return ob_get_clean();
 	}

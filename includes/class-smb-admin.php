@@ -166,6 +166,15 @@ class SMB_Admin {
 		?>
 		<div class="smb-admin">
 
+			<h3 class="smb-pack-section-h">Layout</h3>
+			<p class="smb-layout-choice">
+				<?php $layout = SMB_Source::layout( $post->ID ); ?>
+				<?php foreach ( SMB_Source::layouts() as $slug => $label ) : ?>
+					<label style="margin-right:16px"><input type="radio" name="smb_layout" value="<?php echo esc_attr( $slug ); ?>" <?php checked( $layout, $slug ); ?>/> <?php echo esc_html( $label ); ?></label>
+				<?php endforeach; ?>
+				<br/><span class="description">How the pack offer, bundle offer and bought-together box of this product are laid out. Grid and carousel are prepared for the design update: until then they print with the list look.</span>
+			</p>
+
 			<h3 class="smb-pack-section-h">1. Pack offers <small>(Buy 1 / Buy 2 pack…)</small></h3>
 			<p>
 				<label><input type="checkbox" class="smb-packs-on" name="smb_packs_on" value="yes" <?php checked( $packs_on ); ?>/> Show pack offers on this product</label>
@@ -322,6 +331,9 @@ class SMB_Admin {
 		if ( ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) || ! current_user_can( 'edit_post', $post_id ) ) {
 			return;
 		}
+
+		// Layout (list | grid | carousel); anything else is stored as list.
+		update_post_meta( $post_id, '_smb_layout', SMB_Source::clean_layout( isset( $_POST['smb_layout'] ) ? sanitize_key( wp_unslash( $_POST['smb_layout'] ) ) : 'list' ) );
 
 		// Packs
 		$rows    = array();

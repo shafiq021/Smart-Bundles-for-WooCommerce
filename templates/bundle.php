@@ -14,14 +14,18 @@
  * @var float  $save      reg_total - total (0 or more)
  * @var string $save_pct_text
  * @var bool   $demo      true inside the settings-page preview
+ * @var string $layout    list | grid | carousel (default list)
  */
 defined( 'ABSPATH' ) || exit;
 
 $demo  = ! empty( $demo );
 $type  = isset( $type ) ? $type : 'percent'; // how the discount is worked out: percent | fixed
 $value = isset( $value ) ? $value : 0;
+$layout = SMB_Source::clean_layout( isset( $layout ) ? $layout : 'list' ); // list | grid | carousel
+$slide  = 'carousel' === $layout ? ' smb-slide' : '';
+$track  = 'carousel' === $layout ? ' smb-carousel' : '';
 ?>
-<div class="smb-wrap smb-offer-wrap" data-smb="bundle" data-type="<?php echo esc_attr( $type ); ?>" data-value="<?php echo esc_attr( $value ); ?>">
+<div class="smb-wrap smb-offer-wrap smb-layout--<?php echo esc_attr( $layout ); ?>" data-layout="<?php echo esc_attr( $layout ); ?>" data-smb="bundle" data-type="<?php echo esc_attr( $type ); ?>" data-value="<?php echo esc_attr( $value ); ?>">
 
 	<?php if ( '' !== $title ) : ?>
 		<div class="smb-title"><span><?php echo esc_html( $title ); ?></span></div>
@@ -46,9 +50,9 @@ $value = isset( $value ) ? $value : 0;
 
 		<p class="smb-bundle-save<?php echo $save > 0 ? '' : ' is-hidden'; ?>"><?php /* translators: %s: amount saved */ echo wp_kses_post( sprintf( esc_html__( 'Save %s!', 'smart-bundles' ), wc_price( $save ) ) ); ?></p>
 
-		<div class="smb-bundle-items">
+		<div class="smb-bundle-items<?php echo esc_attr( $track ); ?>">
 			<?php foreach ( $rows as $i => $r ) : ?>
-				<div class="smb-bundle-item"
+				<div class="smb-bundle-item<?php echo esc_attr( $slide ); ?>"
 					data-key="<?php echo esc_attr( isset( $r['key'] ) ? $r['key'] : $i ); ?>"
 					data-id="<?php echo esc_attr( isset( $r['id'] ) ? $r['id'] : 0 ); ?>"
 					data-current="<?php echo esc_attr( isset( $r['current'] ) ? $r['current'] : $r['unit'] ); ?>"

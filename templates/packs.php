@@ -9,6 +9,7 @@
  * @var string          $title
  * @var bool            $is_var
  * @var bool            $hide_qty
+ * @var string          $layout  list | grid | carousel (default list)
  */
 defined( 'ABSPATH' ) || exit;
 
@@ -18,8 +19,13 @@ foreach ( $tiers as $t ) {
 		$has_default = true;
 	}
 }
+
+$layout = SMB_Source::clean_layout( isset( $layout ) ? $layout : 'list' ); // list | grid | carousel
+$slide  = 'carousel' === $layout ? ' smb-slide' : '';
+$track  = 'carousel' === $layout ? ' smb-carousel' : '';
 ?>
-<div class="smb-wrap smb-packs-wrap"
+<div class="smb-wrap smb-packs-wrap smb-layout--<?php echo esc_attr( $layout ); ?>"
+	data-layout="<?php echo esc_attr( $layout ); ?>"
 	data-smb="packs"
 	data-variable="<?php echo ! empty( $is_var ) ? '1' : '0'; ?>"
 	data-hide-qty="<?php echo ! empty( $hide_qty ) ? '1' : '0'; ?>">
@@ -28,11 +34,11 @@ foreach ( $tiers as $t ) {
 		<div class="smb-title"><span><?php echo esc_html( $title ); ?></span></div>
 	<?php endif; ?>
 
-	<div class="smb-packs" role="radiogroup">
+	<div class="smb-packs<?php echo esc_attr( $track ); ?>" role="radiogroup">
 		<?php foreach ( $tiers as $i => $t ) :
 			$checked = $has_default ? ! empty( $t['default'] ) : ( 0 === $i );
 			?>
-			<label class="smb-pack<?php echo $checked ? ' is-selected' : ''; ?>"
+			<label class="smb-pack<?php echo esc_attr( $slide ); ?><?php echo $checked ? ' is-selected' : ''; ?>"
 				data-qty="<?php echo esc_attr( $t['qty'] ); ?>"
 				data-type="<?php echo esc_attr( $t['type'] ); ?>"
 				data-value="<?php echo esc_attr( $t['value'] ); ?>"

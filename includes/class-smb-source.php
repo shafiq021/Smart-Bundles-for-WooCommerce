@@ -65,6 +65,31 @@ class SMB_Source {
 		);
 	}
 
+	/** The offer layouts, in the order the selector shows them. */
+	public static function layouts() {
+		return array(
+			'list'     => __( 'List', 'smart-bundles' ),
+			'grid'     => __( 'Grid', 'smart-bundles' ),
+			'carousel' => __( 'Carousel', 'smart-bundles' ),
+		);
+	}
+
+	/** Anything that is not a known layout becomes "list", the look every offer had before layouts existed. */
+	public static function clean_layout( $value ) {
+		$value = is_string( $value ) ? $value : '';
+		return isset( self::layouts()[ $value ] ) ? $value : 'list';
+	}
+
+	/**
+	 * Layout of the offers on a product (_smb_layout). One choice per product: its pack offer,
+	 * bundle offer and bought-together box all follow it. Products saved before layouts existed
+	 * have no value and stay on "list".
+	 */
+	public static function layout( $product_id ) {
+		$layout = self::clean_layout( get_post_meta( absint( $product_id ), '_smb_layout', true ) );
+		return self::clean_layout( apply_filters( 'smb_layout', $layout, absint( $product_id ) ) );
+	}
+
 	public static function config( $product_id ) {
 		$product_id = absint( $product_id );
 		$meta       = function ( $key, $default = '' ) use ( $product_id ) {

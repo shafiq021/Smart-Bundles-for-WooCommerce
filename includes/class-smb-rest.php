@@ -140,6 +140,7 @@ class SMB_REST {
 			'name'      => $product->get_name(),
 			'permalink' => get_permalink( $id ),
 			'thumbnail' => wp_get_attachment_image_url( $product->get_image_id(), 'woocommerce_gallery_thumbnail' ) ?: '',
+			'layout'    => SMB_Source::layout( $id ),
 		);
 
 		if ( 'bundles' === $type ) {

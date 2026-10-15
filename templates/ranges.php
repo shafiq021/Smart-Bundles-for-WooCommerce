@@ -10,10 +10,16 @@
  * @var bool            $is_var  variable product: prices follow the chosen variation
  * @var float           $current display price of one unit (lowest variation price for variable products)
  * @var float           $regular display regular price of one unit
+ * @var string          $layout  list | grid | carousel (default list)
  */
 defined( 'ABSPATH' ) || exit;
+
+$layout = SMB_Source::clean_layout( isset( $layout ) ? $layout : 'list' ); // list | grid | carousel
+$slide  = 'carousel' === $layout ? ' smb-slide' : '';
+$track  = 'carousel' === $layout ? ' smb-carousel' : '';
 ?>
-<div class="smb-wrap smb-ranges-wrap"
+<div class="smb-wrap smb-ranges-wrap smb-layout--<?php echo esc_attr( $layout ); ?>"
+	data-layout="<?php echo esc_attr( $layout ); ?>"
 	data-smb="ranges"
 	data-variable="<?php echo ! empty( $is_var ) ? '1' : '0'; ?>"
 	data-current="<?php echo esc_attr( $current ); ?>"
@@ -23,9 +29,9 @@ defined( 'ABSPATH' ) || exit;
 		<div class="smb-title"><span><?php echo esc_html( $title ); ?></span></div>
 	<?php endif; ?>
 
-	<div class="smb-range-list" role="list">
+	<div class="smb-range-list<?php echo esc_attr( $track ); ?>" role="list">
 		<?php foreach ( $ranges as $r ) : ?>
-			<div class="smb-range" role="listitem"
+			<div class="smb-range<?php echo esc_attr( $slide ); ?>" role="listitem"
 				data-from="<?php echo esc_attr( $r['from'] ); ?>"
 				data-to="<?php echo esc_attr( $r['to'] ); ?>"
 				data-value="<?php echo esc_attr( $r['value'] ); ?>">

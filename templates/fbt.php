@@ -12,6 +12,7 @@
  * @var string          $button_text   cart page button label
  * @var bool            $show_summary  show the "N selected · +Rs.X" line
  * @var bool            $demo          true inside the settings-page preview
+ * @var string          $layout  list | grid | carousel (default list)
  */
 defined( 'ABSPATH' ) || exit;
 
@@ -19,16 +20,19 @@ $context      = isset( $context ) ? $context : 'product';
 $button_text  = isset( $button_text ) ? $button_text : '';
 $show_summary = ! isset( $show_summary ) || $show_summary;
 $demo         = ! empty( $demo );
+$layout = SMB_Source::clean_layout( isset( $layout ) ? $layout : 'list' ); // list | grid | carousel
+$slide  = 'carousel' === $layout ? ' smb-slide' : '';
+$track  = 'carousel' === $layout ? ' smb-carousel' : '';
 ?>
-<div class="smb-wrap smb-fbt-wrap" data-smb="fbt" data-context="<?php echo esc_attr( $context ); ?>">
+<div class="smb-wrap smb-fbt-wrap smb-layout--<?php echo esc_attr( $layout ); ?>" data-layout="<?php echo esc_attr( $layout ); ?>" data-smb="fbt" data-context="<?php echo esc_attr( $context ); ?>">
 
 	<?php if ( '' !== $title ) : ?>
 		<div class="smb-title"><span><?php echo esc_html( $title ); ?></span></div>
 	<?php endif; ?>
 
-	<div class="smb-items">
+	<div class="smb-items<?php echo esc_attr( $track ); ?>">
 		<?php foreach ( $items as $it ) : ?>
-			<label class="smb-item<?php echo $it['checked'] ? ' is-selected' : ''; ?>"
+			<label class="smb-item<?php echo esc_attr( $slide ); ?><?php echo $it['checked'] ? ' is-selected' : ''; ?>"
 				data-id="<?php echo esc_attr( $it['id'] ); ?>"
 				data-vid="<?php echo esc_attr( ! empty( $it['variation_id'] ) ? $it['variation_id'] : 0 ); ?>"
 				data-price="<?php echo esc_attr( $it['price'] ); ?>">
