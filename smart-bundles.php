@@ -13,6 +13,16 @@
 
 defined( 'ABSPATH' ) || exit;
 
+// Another copy of this plugin is already loaded (for example an older version that lives in a
+// different folder). Loading a second copy would redeclare functions and classes and end in a
+// fatal error, so this copy stays idle and tells the admin what to do.
+if ( defined( 'SMB_VERSION' ) ) {
+	add_action( 'admin_notices', function () {
+		echo '<div class="notice notice-error"><p><strong>Smart Bundles</strong> is already running from another plugin folder. Deactivate and delete the other copy of "Smart Bundles for WooCommerce" on the Plugins page, then activate this one (folder: <code>' . esc_html( basename( __DIR__ ) ) . '</code>).</p></div>';
+	} );
+	return;
+}
+
 define( 'SMB_VERSION', '1.3.0' );
 define( 'SMB_FILE', __FILE__ );
 define( 'SMB_DIR', plugin_dir_path( __FILE__ ) );
@@ -67,6 +77,7 @@ add_action( 'before_woocommerce_init', function () {
  * Load a template. A theme can override any file by copying it to:
  * yourtheme/smart-bundles/<file>.php
  */
+if ( ! function_exists( 'smb_get_template' ) ) {
 function smb_get_template( $file, $args = array() ) {
 	$located = locate_template( 'smart-bundles/' . $file );
 	if ( ! $located ) {
@@ -77,4 +88,5 @@ function smb_get_template( $file, $args = array() ) {
 		extract( $args, EXTR_SKIP ); // phpcs:ignore WordPress.PHP.DontExtract
 		include $located;
 	}
+}
 }
