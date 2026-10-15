@@ -39,6 +39,7 @@ add_action( 'plugins_loaded', function () {
 	require_once SMB_DIR . 'includes/class-smb-rest.php';
 	require_once SMB_DIR . 'includes/class-smb-gutenberg.php';
 	require_once SMB_DIR . 'includes/class-smb-admin.php';
+	require_once SMB_DIR . 'includes/class-smb-tools.php';
 
 	SMB_Settings::init();
 	SMB_Source::init();
@@ -49,6 +50,7 @@ add_action( 'plugins_loaded', function () {
 	SMB_Gutenberg::init();
 	if ( is_admin() ) {
 		SMB_Admin::init();
+		SMB_Tools::init();
 	}
 }, 20 );
 
