@@ -35,21 +35,25 @@ add_action( 'plugins_loaded', function () {
 	require_once SMB_DIR . 'includes/class-smb-source.php';
 	require_once SMB_DIR . 'includes/class-smb-pricing.php';
 	require_once SMB_DIR . 'includes/class-smb-frontend.php';
+	require_once SMB_DIR . 'includes/class-smb-blocks.php';
 	require_once SMB_DIR . 'includes/class-smb-admin.php';
 
 	SMB_Settings::init();
 	SMB_Source::init();
 	SMB_Pricing::init();
 	SMB_Frontend::init();
+	SMB_Blocks::init();
 	if ( is_admin() ) {
 		SMB_Admin::init();
 	}
 }, 20 );
 
-// Declare HPOS compatibility (the plugin never touches order tables directly).
+// Declare HPOS compatibility (the plugin never touches order tables directly) and Cart / Checkout
+// block compatibility (see includes/class-smb-blocks.php).
 add_action( 'before_woocommerce_init', function () {
 	if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
 		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', SMB_FILE, true );
+		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'cart_checkout_blocks', SMB_FILE, true );
 	}
 } );
 

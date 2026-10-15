@@ -12,7 +12,7 @@ class SMB_Admin {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
 		add_action( 'wp_ajax_smb_search_products', array( __CLASS__, 'ajax_search_products' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'notices' ) );
-add_filter( 'plugin_action_links_' . plugin_basename( SMB_FILE ), function ( $links ) {
+		add_filter( 'plugin_action_links_' . plugin_basename( SMB_FILE ), function ( $links ) {
 			array_unshift( $links, '<a href="' . esc_url( admin_url( 'admin.php?page=smart-bundles' ) ) . '">Settings</a>' );
 			return $links;
 		} );
@@ -97,7 +97,7 @@ add_filter( 'plugin_action_links_' . plugin_basename( SMB_FILE ), function ( $li
 			<td class="smb-col-product">
 				<input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[<?php echo esc_attr( $i ); ?>][id]" value="<?php echo esc_attr( $id ); ?>"/>
 				<input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[<?php echo esc_attr( $i ); ?>][variation_id]" value="<?php echo esc_attr( $vid ); ?>"/>
-<span class="smb-thumb"><?php echo wp_kses_post( $thumb_html ); ?></span>
+				<span class="smb-thumb"><?php echo wp_kses_post( $thumb_html ); ?></span>
 				<span class="smb-pname"><?php echo esc_html( $name ); ?></span>
 			</td>
 			<?php if ( null !== $badge ) : ?>
@@ -486,7 +486,7 @@ add_filter( 'plugin_action_links_' . plugin_basename( SMB_FILE ), function ( $li
 		check_ajax_referer( 'search-products', 'security' );
 		if ( ! current_user_can( 'edit_products' ) ) {
 			wp_die( -1 );
-		}
+}
 
 		$term    = isset( $_GET['term'] ) ? (string) wc_clean( wp_unslash( $_GET['term'] ) ) : '';
 		$exclude = isset( $_GET['exclude'] ) ? absint( $_GET['exclude'] ) : 0;

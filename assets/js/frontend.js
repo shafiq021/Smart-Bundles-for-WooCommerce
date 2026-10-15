@@ -433,6 +433,37 @@
 		});
 	}
 
+	/** The WooCommerce Cart block (not the classic [woocommerce_cart] page). */
+	function isBlockCart() {
+		return $('.wp-block-woocommerce-cart').length > 0;
+	}
+
+	/**
+	 * Block cart: add through the cart block's own data store (see blocks-cart.js) so the lines and
+	 * totals refresh in place, then drop the suggestions that are now in the cart.
+	 */
+	function addToBlockCart($wrap, info, $btn, done) {
+		if (!window.smbBlocks) {
+			window.alert(T.error);
+			done();
+			return;
+		}
+		$btn.addClass('is-loading');
+		window.smbBlocks.addToCart(info.ids).then(function () {
+			$wrap.find('.smb-check:checked').closest('.smb-item').remove();
+			if (!$wrap.find('.smb-item').length) {
+				$wrap.remove();
+			} else {
+				renderSummary($wrap, selectedInfo($wrap));
+				$btn.prop('disabled', true);
+			}
+			done();
+		}, function () {
+			window.alert(T.error);
+			done();
+		});
+	}
+
 	function initFbtCart($wrap) {
 		var $btn = $wrap.find('.smb-cart-btn');
 		var busy = false;
@@ -460,6 +491,13 @@
 			}
 			busy = true;
 			$btn.addClass('is-loading');
+			if (isBlockCart()) {
+				addToBlockCart($wrap, info, $btn, function () {
+					busy = false;
+					$btn.removeClass('is-loading');
+				});
+				return;
+			}
 			$.post(D.cartAddUrl, { ids: info.ids.join(','), nonce: D.nonce })
 				.done(function (res) {
 					if (res && res.success && res.data) {
