@@ -1,0 +1,17 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "smart-bundles/pack",
+	"title": "Smart Bundles: Pack offers",
+	"category": "woocommerce",
+	"description": "Quantity packs (Buy 1, Buy 2 ...) or quantity ranges for a product.",
+	"icon": "cart",
+	"keywords": ["bundle", "offer", "woocommerce", "smart bundles"],
+	"textdomain": "smart-bundles",
+	"attributes": {
+		"productId": { "type": "integer", "default": 0 }
+	},
+	"usesContext": ["postId"],
+	"supports": { "html": false, "multiple": true, "align": false },
+	"editorScript": "file:./index.js"
+}

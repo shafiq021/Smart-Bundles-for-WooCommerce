@@ -1,0 +1,17 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "smart-bundles/bundle",
+	"title": "Smart Bundles: Bundle offer",
+	"category": "woocommerce",
+	"description": "A fixed group of products sold as one deal.",
+	"icon": "products",
+	"keywords": ["bundle", "offer", "woocommerce", "smart bundles"],
+	"textdomain": "smart-bundles",
+	"attributes": {
+		"productId": { "type": "integer", "default": 0 }
+	},
+	"usesContext": ["postId"],
+	"supports": { "html": false, "multiple": true, "align": false },
+	"editorScript": "file:./index.js"
+}

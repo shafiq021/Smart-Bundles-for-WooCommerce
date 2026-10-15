@@ -1,0 +1,14 @@
+{
+	"name": "smart-bundles-for-woocommerce",
+	"version": "1.3.0",
+	"description": "Gutenberg blocks for Smart Bundles for WooCommerce (pack, bundle, frequently bought together).",
+	"license": "GPL-2.0-or-later",
+	"private": true,
+	"scripts": {
+		"build": "wp-scripts build --webpack-src-dir=src --output-path=build",
+		"start": "wp-scripts start --webpack-src-dir=src --output-path=build"
+	},
+	"devDependencies": {
+		"@wordpress/scripts": "^30.0.0"
+	}
+}

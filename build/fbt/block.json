@@ -1,0 +1,31 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "smart-bundles/fbt",
+  "title": "Smart Bundles: Bought together",
+  "category": "woocommerce",
+  "description": "Frequently bought together suggestions for a product.",
+  "icon": "plus-alt",
+  "keywords": [
+    "bundle",
+    "offer",
+    "woocommerce",
+    "smart bundles"
+  ],
+  "textdomain": "smart-bundles",
+  "attributes": {
+    "productId": {
+      "type": "integer",
+      "default": 0
+    }
+  },
+  "usesContext": [
+    "postId"
+  ],
+  "supports": {
+    "html": false,
+    "multiple": true,
+    "align": false
+  },
+  "editorScript": "file:./index.js"
+}

@@ -36,6 +36,8 @@ add_action( 'plugins_loaded', function () {
 	require_once SMB_DIR . 'includes/class-smb-pricing.php';
 	require_once SMB_DIR . 'includes/class-smb-frontend.php';
 	require_once SMB_DIR . 'includes/class-smb-blocks.php';
+	require_once SMB_DIR . 'includes/class-smb-rest.php';
+	require_once SMB_DIR . 'includes/class-smb-gutenberg.php';
 	require_once SMB_DIR . 'includes/class-smb-admin.php';
 
 	SMB_Settings::init();
@@ -43,6 +45,8 @@ add_action( 'plugins_loaded', function () {
 	SMB_Pricing::init();
 	SMB_Frontend::init();
 	SMB_Blocks::init();
+	SMB_REST::init();
+	SMB_Gutenberg::init();
 	if ( is_admin() ) {
 		SMB_Admin::init();
 	}
