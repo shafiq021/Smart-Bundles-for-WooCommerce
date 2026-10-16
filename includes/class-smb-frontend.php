@@ -357,7 +357,7 @@ class SMB_Frontend {
 				'price'        => $current,
 				'regular'      => $regular,
 				// The badge typed on the product's own box wins; otherwise the global badge for that product.
-				'badge'        => isset( $row['badge'] ) && '' !== (string) $row['badge'] ? (string) $row['badge'] : SMB_Badges::get( $row['id'] ),
+				'badge'        => isset( $row['badge'] ) && '' !== (string) $row['badge'] ? (string) $row['badge'] : SMB_Settings::badge_for( $row['id'] ),
 				'checked'      => $preselect,
 			);
 		}
@@ -404,8 +404,6 @@ class SMB_Frontend {
 			'title'        => $title,
 			'context'      => 'product',
 			'show_summary' => 'yes' === SMB_Settings::get( 'fbt_show_summary' ),
-			'show_save_amt' => SMB_Badges::show_save_amt(),
-			'show_save_pct' => SMB_Badges::show_save_pct(),
 			'layout'       => SMB_Source::layout( $id ),
 		) );
 		return ob_get_clean();
@@ -512,8 +510,8 @@ class SMB_Frontend {
 
 		$items = self::build_items(
 			SMB_Source::cart_items(),
-			'yes' === SMB_Settings::get( 'fbt_preselect' ),
-			'yes' === SMB_Settings::get( 'fbt_link_names' )
+			'yes' === SMB_Settings::get( 'cart_preselect' ),
+			'yes' === SMB_Settings::get( 'cart_link_names' )
 		);
 		if ( empty( $items ) ) {
 			return '';
@@ -530,8 +528,6 @@ class SMB_Frontend {
 			'context'      => 'cart',
 			'button_text'  => SMB_Settings::get( 'cart_btn_text' ),
 			'show_summary' => 'yes' === SMB_Settings::get( 'cart_show_summary' ),
-			'show_save_amt' => SMB_Badges::show_save_amt(),
-			'show_save_pct' => SMB_Badges::show_save_pct(),
 		) );
 		return ob_get_clean();
 	}

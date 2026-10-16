@@ -25,6 +25,9 @@ class SMB_Settings {
 			'fbt_link_names'    => 'yes',
 			'fbt_hide_oos'      => 'yes',
 			'fbt_show_summary'  => 'yes',
+			'fbt_save_amt'      => 'yes',
+			'fbt_save_pct'      => 'yes',
+			'fbt_badges'        => array(), // [ product id => badge text ], used by Frequently bought together only
 			// Bought together (cart page)
 			'cart_on'           => 'no',
 			'cart_title'        => 'Frequently Bought Together',
@@ -32,6 +35,11 @@ class SMB_Settings {
 			'cart_limit'        => 4,
 			'cart_btn_text'     => 'Add selected to cart',
 			'cart_show_summary' => 'yes',
+			'cart_preselect'    => 'no',
+			'cart_link_names'   => 'yes',
+			'cart_hide_oos'     => 'yes',
+			'cart_save_amt'     => 'yes',
+			'cart_save_pct'     => 'yes',
 			// Bundle offer
 			'bundle_title'        => 'Bundle Deal',
 			'bundle_position'     => 'after_form',
@@ -81,6 +89,12 @@ class SMB_Settings {
 		if ( null === $cache ) {
 			$saved = self::migrate_v1( (array) get_option( self::OPTION, array() ) );
 			$cache = wp_parse_args( $saved, self::defaults() );
+			// Cart-page toggles that were never saved follow the product-page ones (what the cart used before they existed).
+			foreach ( array( 'preselect', 'link_names', 'hide_oos' ) as $s ) {
+				if ( ! isset( $saved[ 'cart_' . $s ] ) && isset( $cache[ 'fbt_' . $s ] ) ) {
+					$cache[ 'cart_' . $s ] = $cache[ 'fbt_' . $s ];
+				}
+			}
 		}
 		return $cache;
 	}
@@ -88,6 +102,38 @@ class SMB_Settings {
 	public static function get( $key, $default = '' ) {
 		$all = self::all();
 		return isset( $all[ $key ] ) ? $all[ $key ] : $default;
+	}
+
+	/**
+	 * Global badge for a product in Frequently bought together (product page + cart page). '' = none.
+	 * A badge typed on a product's own Smart Bundles box is checked first by the caller.
+	 */
+	public static function badge_for( $product_id ) {
+		$map = (array) self::get( 'fbt_badges', array() );
+		$id  = absint( $product_id );
+		return isset( $map[ $id ] ) ? (string) $map[ $id ] : '';
+	}
+
+	/**
+	 * Badge rows -> [ product id => text ]. Accepts the form shape ([ ['id'=>12,'badge'=>'New'], ... ]) AND an
+	 * already-clean map ([ 12 => 'New' ]): WordPress runs the sanitize callback a second time on the first
+	 * ever save of an option, and that second run gets the clean map.
+	 */
+	private static function clean_badges( $rows ) {
+		$out = array();
+		foreach ( (array) $rows as $k => $r ) {
+			if ( is_array( $r ) ) {
+				$id    = isset( $r['id'] ) ? absint( $r['id'] ) : 0;
+				$badge = isset( $r['badge'] ) ? sanitize_text_field( $r['badge'] ) : '';
+			} else {
+				$id    = absint( $k );
+				$badge = sanitize_text_field( (string) $r );
+			}
+			if ( $id && '' !== $badge && 'product' === get_post_type( $id ) ) {
+				$out[ $id ] = $badge;
+			}
+		}
+		return $out;
 	}
 
 	public static function pick_from_options() {
@@ -159,9 +205,20 @@ class SMB_Settings {
 		$out['fbt_limit']     = max( 1, min( 12, absint( isset( $in['fbt_limit'] ) ? $in['fbt_limit'] : $d['fbt_limit'] ) ) );
 		$out['cart_limit']    = max( 1, min( 12, absint( isset( $in['cart_limit'] ) ? $in['cart_limit'] : $d['cart_limit'] ) ) );
 
-		foreach ( array( 'hide_qty', 'fbt_global', 'fbt_preselect', 'fbt_link_names', 'fbt_hide_oos', 'fbt_show_summary', 'cart_on', 'cart_show_summary' ) as $k ) {
+		foreach ( array( 'hide_qty', 'fbt_global', 'fbt_preselect', 'fbt_link_names', 'fbt_hide_oos', 'fbt_show_summary', 'fbt_save_amt', 'fbt_save_pct', 'cart_on', 'cart_show_summary', 'cart_preselect', 'cart_link_names', 'cart_hide_oos', 'cart_save_amt', 'cart_save_pct' ) as $k ) {
 			$out[ $k ] = ( isset( $in[ $k ] ) && 'yes' === $in[ $k ] ) ? 'yes' : 'no';
 		}
+
+		// Product badges: rows from the form; the marker tells "all rows removed" apart from "field not sent" (kept as saved).
+		if ( isset( $in['fbt_badges'] ) && is_array( $in['fbt_badges'] ) ) {
+			$rows = $in['fbt_badges'];
+		} elseif ( isset( $in['fbt_badges_present'] ) ) {
+			$rows = array();
+		} else {
+			$old  = (array) get_option( self::OPTION, array() );
+			$rows = isset( $old['fbt_badges'] ) ? $old['fbt_badges'] : array();
+		}
+		$out['fbt_badges'] = self::clean_badges( $rows );
 
 		$out['custom_css'] = isset( $in['custom_css'] ) ? wp_strip_all_tags( $in['custom_css'] ) : '';
 
@@ -180,6 +237,9 @@ class SMB_Settings {
 			return;
 		}
 		wp_enqueue_style( 'wp-color-picker' );
+		wp_enqueue_style( 'woocommerce_admin_styles' ); // product search look
+		wp_enqueue_script( 'wc-enhanced-select' );
+		wp_enqueue_script( 'smb-badges', SMB_URL . 'assets/js/badges.js', array( 'jquery', 'wc-enhanced-select' ), SMB_VERSION, true );
 		wp_enqueue_style( 'smb-settings', SMB_URL . 'assets/css/settings.css', array(), SMB_VERSION );
 		wp_enqueue_script( 'smb-settings', SMB_URL . 'assets/js/settings.js', array( 'jquery', 'wp-color-picker' ), SMB_VERSION, true );
 		wp_localize_script( 'smb-settings', 'smbSettings', array(
@@ -245,6 +305,44 @@ class SMB_Settings {
 			esc_html( $text )
 		);
 		self::row_close();
+	}
+
+	private static function badge_row( $i, $id, $name, $badge ) {
+		$base = self::OPTION . '[fbt_badges][' . $i . ']';
+		?>
+		<tr class="smb-badge-row">
+			<td><input type="hidden" name="<?php echo esc_attr( $base ); ?>[id]" value="<?php echo esc_attr( $id ); ?>"/><strong class="smb-bname"><?php echo esc_html( $name ); ?></strong></td>
+			<td><input type="text" name="<?php echo esc_attr( $base ); ?>[badge]" value="<?php echo esc_attr( $badge ); ?>" placeholder="<?php esc_attr_e( 'e.g. New Launched', 'smart-bundles' ); ?>"/></td>
+			<td class="smb-badge-x"><button type="button" class="button smb-badge-remove" aria-label="<?php esc_attr_e( 'Remove', 'smart-bundles' ); ?>">&times;</button></td>
+		</tr>
+		<?php
+	}
+
+	/** Search a product, give it a badge. Saved with the rest of the settings. */
+	private static function f_badges() {
+		$map = (array) self::get( 'fbt_badges', array() );
+		self::row_open( 'Product badges' );
+		?>
+		<input type="hidden" name="<?php echo esc_attr( self::OPTION ); ?>[fbt_badges_present]" value="1"/>
+		<select class="wc-product-search smb-badge-search" data-placeholder="<?php esc_attr_e( 'Search for a product…', 'smart-bundles' ); ?>" data-action="woocommerce_json_search_products" data-exclude_type="variation" data-allow_clear="true"><option></option></select>
+		<table class="widefat striped smb-badge-table"<?php echo $map ? '' : ' style="display:none"'; ?>>
+			<thead><tr><th>Product</th><th>Badge</th><th></th></tr></thead>
+			<tbody>
+			<?php
+			$n = 0;
+			foreach ( $map as $pid => $badge ) {
+				$p = wc_get_product( $pid );
+				if ( $p ) {
+					self::badge_row( $n++, $pid, $p->get_name() . ' (#' . $pid . ')', $badge );
+				}
+			}
+			?>
+			</tbody>
+		</table>
+		<span class="smb-badge-next" data-next="<?php echo esc_attr( $n ); ?>"></span>
+		<script type="text/html" id="smb-badge-tpl"><?php self::badge_row( '__i__', '__id__', '', '' ); ?></script>
+		<?php
+		self::row_close( 'Search a product and give it a badge. It shows on that product whenever it appears in Frequently bought together, on the product page and the cart page (automatically filled products too). Not used by pack offers or bundle offers. A badge typed in a product\'s own Smart Bundles box overrides this one.' );
 	}
 
 	/* ---------------------------------------------------------------
@@ -430,6 +528,9 @@ class SMB_Settings {
 									self::f_yesno( 'fbt_link_names', 'Product links', 'Link product names to their pages' );
 									self::f_yesno( 'fbt_hide_oos', 'Stock', 'Hide out-of-stock products' );
 									self::f_yesno( 'fbt_show_summary', 'Summary line', 'Show the "N selected · +Rs.X" line under the list' );
+									self::f_yesno( 'fbt_save_amt', 'Save amount', 'Show "Save Rs.X" under each product that is on sale' );
+									self::f_yesno( 'fbt_save_pct', 'Save percentage', 'Show "You save N%" under each product that is on sale' );
+									self::f_badges();
 									?>
 								</div>
 							</details>
@@ -443,7 +544,12 @@ class SMB_Settings {
 									self::f_select( 'cart_position', 'Position', self::cart_position_options(), 'Shortcode: [smb_cart_bundle]. Works with the classic cart page; for the block-based cart, put the shortcode in a Shortcode block.' );
 									self::f_number( 'cart_limit', 'Max products shown', 1, 12 );
 									self::f_text( 'cart_btn_text', 'Button text', '', 'cart_btn_text' );
+									self::f_yesno( 'cart_preselect', 'Pre-select', 'Tick all add-ons by default' );
+									self::f_yesno( 'cart_link_names', 'Product links', 'Link product names to their pages' );
+									self::f_yesno( 'cart_hide_oos', 'Stock', 'Hide out-of-stock products' );
 									self::f_yesno( 'cart_show_summary', 'Summary line', 'Show the "N selected · +Rs.X" line under the list' );
+									self::f_yesno( 'cart_save_amt', 'Save amount', 'Show "Save Rs.X" under each product that is on sale' );
+									self::f_yesno( 'cart_save_pct', 'Save percentage', 'Show "You save N%" under each product that is on sale' );
 									?>
 								</div>
 							</details>

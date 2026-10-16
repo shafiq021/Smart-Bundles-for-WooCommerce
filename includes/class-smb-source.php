@@ -205,8 +205,10 @@ class SMB_Source {
 	 *                 products only. Hand-picked products (simple or variable) come first, in the
 	 *                 admin's order with their badges, then the automatic ones (simple only).
 	 */
-	public static function get_items( $main_id ) {
+	public static function get_items( $main_id, $hide_oos = null ) {
 		$main_id = absint( $main_id );
+		// Product page uses the product-page stock setting; the cart page passes its own.
+		$hide_oos = null === $hide_oos ? 'yes' === SMB_Settings::get( 'fbt_hide_oos' ) : (bool) $hide_oos;
 
 		if ( ! self::fbt_enabled( $main_id ) ) {
 			return array();
@@ -214,7 +216,7 @@ class SMB_Source {
 		$c = self::config( $main_id );
 
 		$ver = get_option( 'smb_cache_ver', 0 );
-		$key = 'smb_items_' . $main_id . '_' . md5( $ver . wp_json_encode( $c ) . SMB_Settings::get( 'fbt_hide_oos' ) );
+		$key = 'smb_items_' . $main_id . '_' . md5( $ver . wp_json_encode( $c ) . ( $hide_oos ? '1' : '0' ) );
 		$hit = get_transient( $key );
 		if ( is_array( $hit ) ) {
 			return apply_filters( 'smb_items', $hit, $main_id );
@@ -237,8 +239,7 @@ class SMB_Source {
 		// 3) clean up: unique, not the main product, purchasable (+ in stock). Hand-picked products
 		// may be simple or variable (a pinned variation, or one the shopper chooses); the automatic
 		// top-up stays simple-only.
-		$hide_oos = 'yes' === SMB_Settings::get( 'fbt_hide_oos' );
-		$clean    = array();
+		$clean = array();
 		foreach ( $candidates as $it ) {
 			$id  = absint( $it['id'] );
 			$vid = isset( $it['variation_id'] ) ? absint( $it['variation_id'] ) : 0;
@@ -292,7 +293,7 @@ class SMB_Source {
 		$limit = max( 1, (int) SMB_Settings::get( 'cart_limit' ) );
 		$out   = array();
 		foreach ( array_unique( $mains ) as $main ) {
-			foreach ( self::get_items( $main ) as $it ) {
+			foreach ( self::get_items( $main, 'yes' === SMB_Settings::get( 'cart_hide_oos' ) ) as $it ) {
 				$vid = isset( $it['variation_id'] ) ? (int) $it['variation_id'] : 0;
 				$key = $it['id'] . ':' . $vid;
 				// A pinned variation only counts as "already in the cart" when that exact variation is;

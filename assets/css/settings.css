@@ -146,3 +146,9 @@
 	.smb-preview { position: static; }
 	.smb-panel { max-height: none; }
 }
+
+/* Product badges picker (Frequently bought together) */
+.smb-settings .smb-badge-search { width: 100%; max-width: 100%; }
+.smb-settings .smb-badge-table { margin-top: 10px; }
+.smb-settings .smb-badge-table input[type=text] { width: 100%; }
+.smb-settings .smb-badge-table .smb-badge-x { width: 44px; text-align: center; }

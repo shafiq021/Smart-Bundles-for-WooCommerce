@@ -232,6 +232,14 @@ class SMB_Style {
 				'Product name' => self::typo( 'item_name', 16, '700', '#1f2937' ),
 				'Price' => self::typo( 'item_price', 21, '800', '#1f2937' ),
 				'Old price (strike-through)' => self::typo( 'item_strike', 14, '500', '#64748b' ),
+				'"Save Rs.X" pill' => array_merge(
+					self::typo( 'item_pill', 13, '500', '#065f46' ),
+					array(
+						self::c( 'item_pill_bg', 'Background', '#d1fae5' ),
+						self::n( 'item_pill_radius', 'Corner radius (px)', 8, 0, 40 ),
+					)
+				),
+				'"You save …%" text' => self::typo( 'item_sub', 14, '400', '#64748b' ),
 				'Badge (e.g. "New Launched")' => array_merge(
 					self::typo( 'item_badge', 12, '700', '#ffffff' ),
 					array(

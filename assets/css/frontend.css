@@ -438,9 +438,26 @@ form.cart.smb-hide-qty .quantity { display: none !important; }
 	.smb-wrap .smb-badge { right: 10px; }
 }
 
-/* "Save Rs.X" + "You save N%" under a bought-together item (colours/fonts come from the pill / pack-sub style controls) */
+/* "Save Rs.X" + "You save N%" under a bought-together item (Style > Bought together) */
 .smb-wrap .smb-item-savings { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-.smb-wrap .smb-item-savings .smb-pill { display: inline-block; }
+.smb-wrap .smb-item-save {
+	display: inline-block;
+	padding: 3px 11px;
+	border-radius: var(--smb-item-pill-radius);
+	background: var(--smb-item-pill-bg);
+	color: var(--smb-item-pill-color);
+	font-family: var(--smb-item-pill-font);
+	font-size: var(--smb-item-pill-size);
+	font-weight: var(--smb-item-pill-weight);
+	white-space: nowrap;
+}
+.smb-wrap .smb-item-save .amount { color: inherit; }
+.smb-wrap .smb-item-sub {
+	font-family: var(--smb-item-sub-font);
+	font-size: var(--smb-item-sub-size);
+	font-weight: var(--smb-item-sub-weight);
+	color: var(--smb-item-sub-color);
+}
 
 /* Variation dropdown for variable add-ons / bundle items (functional only; V3 styles it) */
 .smb-wrap .smb-var-select { display: block; max-width: 100%; margin-top: 4px; }

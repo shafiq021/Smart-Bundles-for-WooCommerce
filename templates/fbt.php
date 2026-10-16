@@ -12,8 +12,8 @@
  * @var string          $button_text   cart page button label
  * @var bool            $show_summary  show the "N selected · +Rs.X" line
  * @var bool            $demo          true inside the settings-page preview
- * @var bool            $show_save_amt show the "Save Rs.X" pill under items that are on sale (default: the Bundle Badges setting)
- * @var bool            $show_save_pct show the "You save N%" text under items that are on sale (default: the Bundle Badges setting)
+ * @var bool            $show_save_amt show the "Save Rs.X" pill under items that are on sale (default: the setting for this context)
+ * @var bool            $show_save_pct show the "You save N%" text under items that are on sale (default: the setting for this context)
  * @var string          $layout  list | grid | carousel (default list)
  */
 defined( 'ABSPATH' ) || exit;
@@ -22,8 +22,9 @@ $context       = isset( $context ) ? $context : 'product';
 $button_text   = isset( $button_text ) ? $button_text : '';
 $show_summary  = ! isset( $show_summary ) || $show_summary;
 $demo          = ! empty( $demo );
-$show_save_amt = isset( $show_save_amt ) ? (bool) $show_save_amt : SMB_Badges::show_save_amt();
-$show_save_pct = isset( $show_save_pct ) ? (bool) $show_save_pct : SMB_Badges::show_save_pct();
+$save_prefix   = 'cart' === $context ? 'cart' : 'fbt';
+$show_save_amt = isset( $show_save_amt ) ? (bool) $show_save_amt : 'yes' === SMB_Settings::get( $save_prefix . '_save_amt' );
+$show_save_pct = isset( $show_save_pct ) ? (bool) $show_save_pct : 'yes' === SMB_Settings::get( $save_prefix . '_save_pct' );
 $layout = SMB_Source::clean_layout( isset( $layout ) ? $layout : 'list' ); // list | grid | carousel
 $slide  = 'carousel' === $layout ? ' smb-slide' : '';
 $track  = 'carousel' === $layout ? ' smb-carousel' : '';
@@ -75,10 +76,10 @@ $track  = 'carousel' === $layout ? ' smb-carousel' : '';
 					<?php if ( $show_save_amt || $show_save_pct ) : ?>
 						<span class="smb-item-savings<?php echo $save > 0 ? '' : ' is-hidden'; ?>">
 							<?php if ( $show_save_amt ) : ?>
-								<span class="smb-pill smb-item-save"><?php esc_html_e( 'Save', 'smart-bundles' ); ?> <?php echo wp_kses_post( wc_price( $save ) ); ?></span>
+								<span class="smb-item-save"><?php esc_html_e( 'Save', 'smart-bundles' ); ?> <?php echo wp_kses_post( wc_price( $save ) ); ?></span>
 							<?php endif; ?>
 							<?php if ( $show_save_pct ) : ?>
-								<span class="smb-pack-sub smb-item-sub"><?php esc_html_e( 'You save', 'smart-bundles' ); ?> <?php echo esc_html( SMB_Frontend::pct_text( $save_pct ) ); ?>%</span>
+								<span class="smb-item-sub"><?php esc_html_e( 'You save', 'smart-bundles' ); ?> <?php echo esc_html( SMB_Frontend::pct_text( $save_pct ) ); ?>%</span>
 							<?php endif; ?>
 						</span>
 					<?php endif; ?>
