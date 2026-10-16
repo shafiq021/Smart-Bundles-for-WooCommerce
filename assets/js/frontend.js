@@ -345,6 +345,14 @@
 			} else {
 				$strike.remove();
 			}
+
+			// "Save Rs.X" / "You save N%" follow the chosen variation (only the ones the admin switched on exist)
+			var save = Math.max(0, reg - price);
+			var pct = reg > 0 ? save / reg * 100 : 0;
+			$i.find('.smb-item-save').html(T.save + ' ' + fmt(save));
+			$i.find('.smb-item-sub').text(T.youSave + ' ' + parseFloat(pct.toFixed(2)) + '%');
+			$i.find('.smb-item-savings').toggleClass('is-hidden', !(save > 0));
+
 			onChange();
 		});
 	}

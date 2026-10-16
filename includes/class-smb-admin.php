@@ -273,7 +273,7 @@ class SMB_Admin {
 
 			<p class="smb-if-cats"><label><strong>Categories</strong></label><br/><?php self::terms_select( 'smb_cats', 'product_cat', $c['cats'] ); ?></p>
 			<p class="smb-if-tags"><label><strong>Tags</strong></label><br/><?php self::terms_select( 'smb_tags', 'product_tag', $c['tags'] ); ?></p>
-			<p class="description">Add-ons are sold at their normal price. Automatically filled products are simple products only and show no badge. A variable product you pick yourself can be pinned to one variation, or left for the shopper to choose.</p>
+			<p class="description">Add-ons are sold at their normal price. Automatically filled products are simple products only. Badges: one typed here wins; otherwise the product's global badge (WooCommerce &gt; Bundle Badges) is used. A variable product you pick yourself can be pinned to one variation, or left for the shopper to choose.</p>
 
 			<hr/>
 

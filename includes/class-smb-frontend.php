@@ -356,7 +356,8 @@ class SMB_Frontend {
 				'image'        => $r['purchase']->get_image( 'woocommerce_gallery_thumbnail', array( 'loading' => 'lazy' ) ),
 				'price'        => $current,
 				'regular'      => $regular,
-				'badge'        => isset( $row['badge'] ) ? (string) $row['badge'] : '',
+				// The badge typed on the product's own box wins; otherwise the global badge for that product.
+				'badge'        => isset( $row['badge'] ) && '' !== (string) $row['badge'] ? (string) $row['badge'] : SMB_Badges::get( $row['id'] ),
 				'checked'      => $preselect,
 			);
 		}
@@ -403,6 +404,8 @@ class SMB_Frontend {
 			'title'        => $title,
 			'context'      => 'product',
 			'show_summary' => 'yes' === SMB_Settings::get( 'fbt_show_summary' ),
+			'show_save_amt' => SMB_Badges::show_save_amt(),
+			'show_save_pct' => SMB_Badges::show_save_pct(),
 			'layout'       => SMB_Source::layout( $id ),
 		) );
 		return ob_get_clean();
@@ -527,6 +530,8 @@ class SMB_Frontend {
 			'context'      => 'cart',
 			'button_text'  => SMB_Settings::get( 'cart_btn_text' ),
 			'show_summary' => 'yes' === SMB_Settings::get( 'cart_show_summary' ),
+			'show_save_amt' => SMB_Badges::show_save_amt(),
+			'show_save_pct' => SMB_Badges::show_save_pct(),
 		) );
 		return ob_get_clean();
 	}
