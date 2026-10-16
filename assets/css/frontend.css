@@ -438,6 +438,10 @@ form.cart.smb-hide-qty .quantity { display: none !important; }
 	.smb-wrap .smb-badge { right: 10px; }
 }
 
+/* "Save Rs.X" + "You save N%" under a bought-together item (colours/fonts come from the pill / pack-sub style controls) */
+.smb-wrap .smb-item-savings { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.smb-wrap .smb-item-savings .smb-pill { display: inline-block; }
+
 /* Variation dropdown for variable add-ons / bundle items (functional only; V3 styles it) */
 .smb-wrap .smb-var-select { display: block; max-width: 100%; margin-top: 4px; }
 

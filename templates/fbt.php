@@ -12,14 +12,18 @@
  * @var string          $button_text   cart page button label
  * @var bool            $show_summary  show the "N selected · +Rs.X" line
  * @var bool            $demo          true inside the settings-page preview
+ * @var bool            $show_save_amt show the "Save Rs.X" pill under items that are on sale (default: the Bundle Badges setting)
+ * @var bool            $show_save_pct show the "You save N%" text under items that are on sale (default: the Bundle Badges setting)
  * @var string          $layout  list | grid | carousel (default list)
  */
 defined( 'ABSPATH' ) || exit;
 
-$context      = isset( $context ) ? $context : 'product';
-$button_text  = isset( $button_text ) ? $button_text : '';
-$show_summary = ! isset( $show_summary ) || $show_summary;
-$demo         = ! empty( $demo );
+$context       = isset( $context ) ? $context : 'product';
+$button_text   = isset( $button_text ) ? $button_text : '';
+$show_summary  = ! isset( $show_summary ) || $show_summary;
+$demo          = ! empty( $demo );
+$show_save_amt = isset( $show_save_amt ) ? (bool) $show_save_amt : SMB_Badges::show_save_amt();
+$show_save_pct = isset( $show_save_pct ) ? (bool) $show_save_pct : SMB_Badges::show_save_pct();
 $layout = SMB_Source::clean_layout( isset( $layout ) ? $layout : 'list' ); // list | grid | carousel
 $slide  = 'carousel' === $layout ? ' smb-slide' : '';
 $track  = 'carousel' === $layout ? ' smb-carousel' : '';
@@ -31,7 +35,11 @@ $track  = 'carousel' === $layout ? ' smb-carousel' : '';
 	<?php endif; ?>
 
 	<div class="smb-items<?php echo esc_attr( $track ); ?>">
-		<?php foreach ( $items as $it ) : ?>
+		<?php
+		foreach ( $items as $it ) :
+			$save     = max( 0, (float) $it['regular'] - (float) $it['price'] );
+			$save_pct = (float) $it['regular'] > 0 ? $save / (float) $it['regular'] * 100 : 0;
+			?>
 			<label class="smb-item<?php echo esc_attr( $slide ); ?><?php echo $it['checked'] ? ' is-selected' : ''; ?>"
 				data-id="<?php echo esc_attr( $it['id'] ); ?>"
 				data-vid="<?php echo esc_attr( ! empty( $it['variation_id'] ) ? $it['variation_id'] : 0 ); ?>"
@@ -63,6 +71,16 @@ $track  = 'carousel' === $layout ? ' smb-carousel' : '';
 									<?php selected( (int) $o['id'], (int) $it['variation_id'] ); ?>><?php echo esc_html( $o['label'] ); ?></option>
 							<?php endforeach; ?>
 						</select>
+					<?php endif; ?>
+					<?php if ( $show_save_amt || $show_save_pct ) : ?>
+						<span class="smb-item-savings<?php echo $save > 0 ? '' : ' is-hidden'; ?>">
+							<?php if ( $show_save_amt ) : ?>
+								<span class="smb-pill smb-item-save"><?php esc_html_e( 'Save', 'smart-bundles' ); ?> <?php echo wp_kses_post( wc_price( $save ) ); ?></span>
+							<?php endif; ?>
+							<?php if ( $show_save_pct ) : ?>
+								<span class="smb-pack-sub smb-item-sub"><?php esc_html_e( 'You save', 'smart-bundles' ); ?> <?php echo esc_html( SMB_Frontend::pct_text( $save_pct ) ); ?>%</span>
+							<?php endif; ?>
+						</span>
 					<?php endif; ?>
 				</span>
 

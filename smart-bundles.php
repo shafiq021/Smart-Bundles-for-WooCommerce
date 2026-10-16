@@ -43,6 +43,7 @@ add_action( 'plugins_loaded', function () {
 	require_once SMB_DIR . 'includes/class-smb-settings.php';
 	require_once SMB_DIR . 'includes/class-smb-variations.php';
 	require_once SMB_DIR . 'includes/class-smb-source.php';
+	require_once SMB_DIR . 'includes/class-smb-badges.php';
 	require_once SMB_DIR . 'includes/class-smb-pricing.php';
 	require_once SMB_DIR . 'includes/class-smb-frontend.php';
 	require_once SMB_DIR . 'includes/class-smb-blocks.php';
@@ -53,6 +54,7 @@ add_action( 'plugins_loaded', function () {
 
 	SMB_Settings::init();
 	SMB_Source::init();
+	SMB_Badges::init();
 	SMB_Pricing::init();
 	SMB_Frontend::init();
 	SMB_Blocks::init();
