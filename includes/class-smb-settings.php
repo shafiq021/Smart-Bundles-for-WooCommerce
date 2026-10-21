@@ -385,6 +385,7 @@ class SMB_Settings {
 			'title'    => self::get( 'packs_title' ),
 			'is_var'   => false,
 			'hide_qty' => false,
+			'custom'   => SMB_Custom_Pack::demo_card(),
 		) );
 		echo '</section><section data-demo="fbt"><h6 class="smb-demo-label">Frequently bought together (product page)</h6>';
 		smb_get_template( 'fbt.php', array(
@@ -511,6 +512,7 @@ class SMB_Settings {
 									self::f_text( 'packs_title', 'Section title', 'Shown above the pack cards.', 'packs_title' );
 									self::f_select( 'packs_position', 'Position', self::position_options(), 'Shortcode: [smb_packs]' );
 									self::f_yesno( 'hide_qty', 'Quantity box', 'Hide the normal quantity box when a product has pack offers (the pack choice sets the quantity)' );
+									do_action( 'smb_pack_settings_fields' ); // the Custom card options (class-smb-custom-pack.php)
 									?>
 								</div>
 							</details>

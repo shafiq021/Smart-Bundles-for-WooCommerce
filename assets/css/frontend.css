@@ -468,3 +468,46 @@ form.cart.smb-hide-qty .quantity { display: none !important; }
 .smb-wrap .smb-range.is-selected { border-color: currentColor; font-weight: 600; }
 .smb-wrap .smb-ranges-summary { margin-top: 8px; }
 .smb-wrap .smb-ranges-note { margin: 6px 0 0; font-size: .85em; opacity: .75; }
+
+/* ---------- Pack offers: Custom card (reuses every .smb-pack style above) ---------- */
+/* No price, discount or percentage until the card is selected */
+.smb-wrap .smb-pack--custom:not(.is-selected) .smb-pack-price,
+.smb-wrap .smb-pack--custom:not(.is-selected) .smb-pill,
+.smb-wrap .smb-pack--custom:not(.is-selected) .smb-pack-sub { display: none; }
+
+.smb-wrap .smb-custom-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 2px; }
+.smb-wrap .smb-pack--custom .smb-var-select { flex: 1 1 160px; min-width: 0; min-height: 40px; margin: 0; }
+.smb-wrap .smb-custom-stepper { display: inline-flex; align-items: stretch; flex: 0 0 auto; border: 1px solid var(--smb-pack-border-color); border-radius: 6px; overflow: hidden; background: #fff; }
+.smb-wrap .smb-custom-stepper button,
+.smb-wrap .smb-custom-stepper input.smb-custom-qty {
+	margin: 0;
+	min-height: 40px;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--smb-pack-label-color);
+	font-family: inherit;
+	line-height: 1;
+}
+.smb-wrap .smb-custom-stepper button { min-width: 40px; padding: 0; font-size: 20px; cursor: pointer; }
+.smb-wrap .smb-custom-stepper button:hover:not(:disabled) { background: rgba(0, 0, 0, .06); }
+.smb-wrap .smb-custom-stepper button:disabled { opacity: .35; cursor: not-allowed; }
+.smb-wrap .smb-custom-stepper input.smb-custom-qty {
+	width: 54px;
+	padding: 0 4px;
+	border-left: 1px solid var(--smb-pack-border-color);
+	border-right: 1px solid var(--smb-pack-border-color);
+	text-align: center;
+	font-size: 16px;
+	-moz-appearance: textfield;
+	appearance: textfield;
+}
+.smb-wrap .smb-custom-stepper input.smb-custom-qty::-webkit-outer-spin-button,
+.smb-wrap .smb-custom-stepper input.smb-custom-qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+@media (max-width: 520px) {
+	.smb-wrap .smb-pack--custom .smb-var-select { flex-basis: 100%; min-height: 44px; }
+	.smb-wrap .smb-custom-stepper button,
+	.smb-wrap .smb-custom-stepper input.smb-custom-qty { min-height: 44px; }
+	.smb-wrap .smb-custom-stepper button { min-width: 44px; }
+}

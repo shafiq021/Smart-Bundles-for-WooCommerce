@@ -29,7 +29,8 @@
 
 	function initPacks($wrap) {
 		var $form = findForm($wrap);
-		var $cards = $wrap.find('.smb-pack');
+		var $all = $wrap.find('.smb-pack');
+		var $cards = $all.not('.smb-pack--custom'); // the Custom card is handled by pack-custom.js
 		var $qty = $form.find('input.qty, input[name="quantity"]').first();
 		var syncing = false;
 
@@ -38,7 +39,7 @@
 		}
 
 		function select($card) {
-			$cards.removeClass('is-selected');
+			$all.removeClass('is-selected');
 			$card.addClass('is-selected').find('.smb-radio').prop('checked', true);
 		}
 
@@ -51,7 +52,7 @@
 			syncing = false;
 		}
 
-		$wrap.on('change', '.smb-radio', function () {
+		$wrap.on('change', '.smb-pack:not(.smb-pack--custom) .smb-radio', function () {
 			var $card = $(this).closest('.smb-pack');
 			select($card);
 			setQty(parseInt($card.attr('data-qty'), 10) || 1);
@@ -65,8 +66,8 @@
 
 		// Shopper changes the quantity some other way
 		$qty.on('change input', function () {
-			if (syncing) {
-				return;
+			if (syncing || $all.filter('.smb-pack--custom.is-selected').length) {
+				return; // the Custom card (pack-custom.js) owns the quantity while it is selected
 			}
 			var v = parseInt($(this).val(), 10);
 			var $m = $cards.filter(function () { return parseInt($(this).attr('data-qty'), 10) === v; }).first();

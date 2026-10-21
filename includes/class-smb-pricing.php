@@ -220,7 +220,7 @@ class SMB_Pricing {
 	public static function product_quantities( $cart ) {
 		$totals = array();
 		foreach ( $cart->get_cart() as $item ) {
-			if ( isset( $item['smb_bundle_price'] ) ) {
+			if ( isset( $item['smb_bundle_price'] ) || ! empty( $item['sb_pack_custom'] ) ) { // bundle and Custom pack lines are not priced by quantity
 				continue;
 			}
 			$pid            = (int) $item['product_id'];
@@ -399,6 +399,11 @@ class SMB_Pricing {
 				continue;
 			}
 
+			// Custom pack line (pack offers, Custom card): priced by SMB_Custom_Pack, never by a 1 pack / 2 pack tier.
+			if ( ! empty( $item['sb_pack_custom'] ) ) {
+				continue;
+			}
+
 			$cfg = SMB_Source::config( $item['product_id'] );
 			if ( ! $cfg['packs_on'] ) {
 				continue;
@@ -432,6 +437,10 @@ class SMB_Pricing {
 
 	private static function describe( $item ) {
 		$rows = array();
+
+		if ( ! empty( $item['sb_pack_custom'] ) ) {
+			return $rows; // SMB_Custom_Pack prints the label of its own lines
+		}
 
 		if ( isset( $item['smb_bundle_price'] ) ) {
 			$name   = ! empty( $item['smb_bundle_name'] ) ? $item['smb_bundle_name'] : __( 'Bundle', 'smart-bundles' );

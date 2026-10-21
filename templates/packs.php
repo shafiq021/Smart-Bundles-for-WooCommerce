@@ -10,6 +10,7 @@
  * @var bool            $is_var
  * @var bool            $hide_qty
  * @var string          $layout  list | grid | carousel (default list)
+ * @var array|null      $custom  data of the optional Custom card (see SMB_Custom_Pack::card_data()), null = none
  */
 defined( 'ABSPATH' ) || exit;
 
@@ -64,5 +65,15 @@ $track  = 'carousel' === $layout ? ' smb-carousel' : '';
 				</span>
 			</label>
 		<?php endforeach; ?>
+
+		<?php
+		// The optional "Custom" card (quantity + variation picker) always comes last.
+		if ( ! empty( $custom ) ) {
+			smb_get_template( 'pack-custom.php', array(
+				'custom' => $custom,
+				'slide'  => $slide,
+			) );
+		}
+		?>
 	</div>
 </div>

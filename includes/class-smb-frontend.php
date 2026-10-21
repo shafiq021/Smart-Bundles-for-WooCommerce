@@ -268,6 +268,7 @@ class SMB_Frontend {
 			'is_var'   => $product->is_type( 'variable' ),
 			'hide_qty' => 'yes' === SMB_Settings::get( 'hide_qty' ),
 			'layout'   => SMB_Source::layout( $id ),
+			'custom'   => SMB_Custom_Pack::card_data( $product ),
 		) );
 		return ob_get_clean();
 	}
