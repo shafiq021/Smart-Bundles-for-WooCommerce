@@ -47,6 +47,7 @@ class SMB_Custom_Pack {
 		return array(
 			'on'         => 'no',
 			'title'      => 'Custom Pack',
+			'subtitle'   => 'Choose your quantity',
 			'badge_on'   => 'yes',
 			'badge'      => 'Best Value',
 			'disc_type'  => 'none', // none | percent | fixed (amount per item)
@@ -110,6 +111,7 @@ class SMB_Custom_Pack {
 
 		$out['on']       = ( isset( $in['on'] ) && 'yes' === $in['on'] ) ? 'yes' : 'no';
 		$out['title']    = isset( $in['title'] ) ? sanitize_text_field( $in['title'] ) : $d['title'];
+		$out['subtitle'] = isset( $in['subtitle'] ) ? sanitize_text_field( $in['subtitle'] ) : $d['subtitle'];
 		$out['badge_on'] = ( isset( $in['badge_on'] ) && 'yes' === $in['badge_on'] ) ? 'yes' : 'no';
 		$out['badge']    = isset( $in['badge'] ) ? sanitize_text_field( $in['badge'] ) : $d['badge'];
 
@@ -173,13 +175,18 @@ class SMB_Custom_Pack {
 			'<input type="text" name="' . esc_attr( $n ) . '[title]" value="' . esc_attr( $s['title'] ) . '"/>'
 		);
 		$row(
+			__( 'Custom card hint text', 'smart-bundles' ),
+			'<input type="text" name="' . esc_attr( $n ) . '[subtitle]" value="' . esc_attr( $s['subtitle'] ) . '"/>',
+			__( 'Small line under the heading once the card is selected. Leave empty to hide it.', 'smart-bundles' )
+		);
+		$row(
 			__( 'Custom card badge', 'smart-bundles' ),
 			'<label class="smb-check-label"><input type="checkbox" name="' . esc_attr( $n ) . '[badge_on]" value="yes"' . checked( $s['badge_on'], 'yes', false ) . '/> ' . esc_html__( 'Show a badge on the Custom card', 'smart-bundles' ) . '</label>'
 		);
 		$row(
 			__( 'Custom card badge text', 'smart-bundles' ),
 			'<input type="text" name="' . esc_attr( $n ) . '[badge]" value="' . esc_attr( $s['badge'] ) . '"/>',
-			__( 'Uses the same look as the pack badges (Style > Pack offers > Badge).', 'smart-bundles' )
+			__( 'Uses the same look as the pack badges (Style > Pack offers > Badge). Dropdown, counter and price pill are styled in the same Style tab.', 'smart-bundles' )
 		);
 
 		$opts  = array(
@@ -313,6 +320,7 @@ class SMB_Custom_Pack {
 
 		$out = array(
 			'title'    => self::heading(),
+			'subtitle' => trim( (string) self::settings()['subtitle'] ),
 			'badge'    => self::badge(),
 			'variable' => false,
 			'options'  => array(),
@@ -365,6 +373,7 @@ class SMB_Custom_Pack {
 		);
 		return array(
 			'title'    => self::heading(),
+			'subtitle' => trim( (string) self::settings()['subtitle'] ),
 			'badge'    => self::badge(),
 			'variable' => true,
 			'options'  => $options,
