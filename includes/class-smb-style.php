@@ -183,12 +183,51 @@ class SMB_Style {
 				),
 				'"You save …%" text' => self::typo( 'pack_sub', 14, '400', '#64748b' ),
 				'Price' => self::typo( 'pack_price', 23, '800', '#1f2937' ),
+				'Price background: card not selected' => array(
+					self::o( 'pack_price_fill', 'Background', 'var(--smb-pack-price-bg)', array( 'transparent' => 'None (plain price)', 'var(--smb-pack-price-bg)' => 'Colored pill' ) ),
+					self::c( 'pack_price_bg', 'Pill color', '#eaf1fe' ),
+				),
+				'Price background: card selected' => array(
+					self::o( 'pack_price_sel_fill', 'Background', 'var(--smb-pack-price-sel-bg)', array( 'transparent' => 'None (plain price)', 'var(--smb-pack-price-sel-bg)' => 'Colored pill' ) ),
+					self::c( 'pack_price_sel_bg', 'Pill color', '#2563eb' ),
+					self::c( 'pack_price_sel_color', 'Price text color (selected card)', '#ffffff' ),
+				),
+				'Price background: shape' => array(
+					self::n( 'pack_price_radius', 'Corner radius (px)', 30, 0, 60 ),
+					self::n( 'pack_price_pad_y', 'Padding top & bottom (px)', 6, 0, 30 ),
+					self::n( 'pack_price_pad_x', 'Padding left & right (px)', 16, 0, 40 ),
+				),
 				'Old price (strike-through)' => self::typo( 'pack_strike', 15, '500', '#64748b' ),
 				'Badge (e.g. "Most Popular")' => array_merge(
 					self::typo( 'pack_badge', 12, '700', '#ffffff' ),
 					array(
 						self::c( 'pack_badge_bg', 'Background', '#374151' ),
 						self::n( 'pack_badge_radius', 'Corner radius (px)', 8, 0, 40 ),
+					)
+				),
+				'Custom card: hint text ("Choose your quantity")' => self::typo( 'cust_hint', 15, '400', '#64748b' ),
+				'Custom card: dropdown (shown when the card is selected)' => array_merge(
+					self::typo( 'cust_dd', 16, '500', '#1f2937' ),
+					array(
+						self::c( 'cust_dd_bg', 'Background', '#ffffff' ),
+						self::c( 'cust_dd_border', 'Border color', '#dbe4f3' ),
+						self::n( 'cust_dd_border_w', 'Border width (px)', 1, 0, 6 ),
+						self::n( 'cust_dd_radius', 'Corner radius (px)', 12, 0, 40 ),
+						self::n( 'cust_dd_height', 'Height (px, at least 40)', 48, 40, 80 ),
+						self::c( 'cust_dd_arrow', 'Arrow color', '#64748b' ),
+					)
+				),
+				'Custom card: counter "− 1 +" (shown when the card is selected)' => array_merge(
+					self::typo( 'cust_qty', 18, '600', '#1f2937' ),
+					array(
+						self::c( 'cust_qty_bg', 'Background', '#ffffff' ),
+						self::c( 'cust_qty_border', 'Border & divider color', '#dbe4f3' ),
+						self::n( 'cust_qty_border_w', 'Border width (px)', 1, 0, 6 ),
+						self::n( 'cust_qty_radius', 'Corner radius (px)', 12, 0, 40 ),
+						self::n( 'cust_qty_height', 'Height (px, at least 40)', 48, 40, 80 ),
+						self::n( 'cust_qty_width', 'Number box width (px)', 56, 36, 120 ),
+						self::c( 'cust_qty_btn_color', '− / + button color', '#1f2937' ),
+						self::c( 'cust_qty_btn_hover', '− / + hover background', '#eef3fc' ),
 					)
 				),
 			),

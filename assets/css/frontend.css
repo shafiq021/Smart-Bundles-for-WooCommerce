@@ -168,6 +168,18 @@
 	font-weight: var(--smb-pack-price-weight);
 	color: var(--smb-pack-price-color);
 }
+.smb-wrap .smb-pack-price .smb-price {
+	display: inline-block;
+	padding: var(--smb-pack-price-pad-y) var(--smb-pack-price-pad-x);
+	border-radius: var(--smb-pack-price-radius);
+	background: var(--smb-pack-price-fill);
+	line-height: 1.25;
+	white-space: nowrap;
+	transition: background-color .15s, color .15s;
+}
+.smb-wrap .smb-pack.is-selected .smb-pack-price .smb-price { background: var(--smb-pack-price-sel-fill); }
+.smb-wrap .smb-pack.is-selected .smb-pack-price .smb-price,
+.smb-wrap .smb-pack.is-selected .smb-pack-price .smb-price .amount { color: var(--smb-pack-price-sel-color); }
 .smb-wrap .smb-pack-price .smb-strike,
 .smb-wrap .smb-pack-price .smb-strike .amount {
 	font-family: var(--smb-pack-strike-font);
@@ -470,44 +482,125 @@ form.cart.smb-hide-qty .quantity { display: none !important; }
 .smb-wrap .smb-ranges-note { margin: 6px 0 0; font-size: .85em; opacity: .75; }
 
 /* ---------- Pack offers: Custom card (reuses every .smb-pack style above) ---------- */
-/* No price, discount or percentage until the card is selected */
+/* Not selected: only the heading and the badge. The hint, dropdown, counter and price appear once it is selected. */
 .smb-wrap .smb-pack--custom:not(.is-selected) .smb-pack-price,
 .smb-wrap .smb-pack--custom:not(.is-selected) .smb-pill,
-.smb-wrap .smb-pack--custom:not(.is-selected) .smb-pack-sub { display: none; }
+.smb-wrap .smb-pack--custom:not(.is-selected) .smb-pack-sub,
+.smb-wrap .smb-pack--custom:not(.is-selected) .smb-custom-hint,
+.smb-wrap .smb-pack--custom:not(.is-selected) .smb-custom-controls { display: none; }
 
-.smb-wrap .smb-custom-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 2px; }
-.smb-wrap .smb-pack--custom .smb-var-select { flex: 1 1 160px; min-width: 0; min-height: 40px; margin: 0; }
-.smb-wrap .smb-custom-stepper { display: inline-flex; align-items: stretch; flex: 0 0 auto; border: 1px solid var(--smb-pack-border-color); border-radius: 6px; overflow: hidden; background: #fff; }
-.smb-wrap .smb-custom-stepper button,
-.smb-wrap .smb-custom-stepper input.smb-custom-qty {
+/* Selected: the radio lines up with the heading, the price pill sits at the top right */
+.smb-wrap .smb-pack--custom.is-selected { align-items: flex-start; }
+.smb-wrap .smb-pack--custom.is-selected .smb-radio { margin-top: max(0px, calc((var(--smb-pack-label-size) * 1.3 - var(--smb-radio-size)) / 2)); }
+.smb-wrap .smb-pack--custom.is-selected .smb-pack-price { align-self: flex-start; }
+
+.smb-wrap .smb-custom-hint {
+	margin-top: -2px;
+	font-family: var(--smb-cust-hint-font);
+	font-size: var(--smb-cust-hint-size);
+	font-weight: var(--smb-cust-hint-weight);
+	color: var(--smb-cust-hint-color);
+}
+.smb-wrap .smb-custom-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-top: 8px; }
+
+/* Dropdown */
+.smb-wrap .smb-custom-select { position: relative; display: block; flex: 1 1 130px; min-width: 0; }
+.smb-wrap .smb-custom-select::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	right: 18px;
+	width: 8px;
+	height: 8px;
+	border-right: 2px solid var(--smb-cust-dd-arrow);
+	border-bottom: 2px solid var(--smb-cust-dd-arrow);
+	transform: translateY(-70%) rotate(45deg);
+	pointer-events: none;
+}
+.smb-wrap .smb-custom-select select.smb-custom-var {
+	-webkit-appearance: none;
+	appearance: none;
+	display: block;
+	width: 100%;
+	height: max(var(--smb-cust-dd-height), 40px);
 	margin: 0;
-	min-height: 40px;
+	padding: 0 42px 0 16px;
+	border: var(--smb-cust-dd-border-w) solid var(--smb-cust-dd-border);
+	border-radius: var(--smb-cust-dd-radius);
+	background: var(--smb-cust-dd-bg);
+	box-shadow: none;
+	color: var(--smb-cust-dd-color);
+	font-family: var(--smb-cust-dd-font);
+	font-size: var(--smb-cust-dd-size);
+	font-weight: var(--smb-cust-dd-weight);
+	line-height: 1.2;
+	text-overflow: ellipsis;
+	cursor: pointer;
+}
+.smb-wrap .smb-custom-select select.smb-custom-var:focus-visible { outline: 2px solid var(--smb-radio-color); outline-offset: 2px; }
+
+/* Counter  (- 1 +) */
+.smb-wrap .smb-custom-stepper {
+	display: inline-flex;
+	align-items: stretch;
+	flex: 0 0 auto;
+	height: max(var(--smb-cust-qty-height), 40px);
+	border: var(--smb-cust-qty-border-w) solid var(--smb-cust-qty-border);
+	border-radius: var(--smb-cust-qty-radius);
+	background: var(--smb-cust-qty-bg);
+	overflow: hidden;
+}
+.smb-wrap .smb-custom-stepper button.smb-custom-minus,
+.smb-wrap .smb-custom-stepper button.smb-custom-plus {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: max(var(--smb-cust-qty-height), 44px);
+	height: auto;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
 	border: 0;
 	border-radius: 0;
 	background: transparent;
 	box-shadow: none;
-	color: var(--smb-pack-label-color);
+	color: var(--smb-cust-qty-btn-color);
 	font-family: inherit;
+	font-size: 24px;
+	font-weight: 400;
 	line-height: 1;
+	cursor: pointer;
 }
-.smb-wrap .smb-custom-stepper button { min-width: 40px; padding: 0; font-size: 20px; cursor: pointer; }
-.smb-wrap .smb-custom-stepper button:hover:not(:disabled) { background: rgba(0, 0, 0, .06); }
+.smb-wrap .smb-custom-stepper button.smb-custom-minus:hover:not(:disabled),
+.smb-wrap .smb-custom-stepper button.smb-custom-plus:hover:not(:disabled) { background: var(--smb-cust-qty-btn-hover); color: var(--smb-cust-qty-btn-color); }
 .smb-wrap .smb-custom-stepper button:disabled { opacity: .35; cursor: not-allowed; }
 .smb-wrap .smb-custom-stepper input.smb-custom-qty {
-	width: 54px;
-	padding: 0 4px;
-	border-left: 1px solid var(--smb-pack-border-color);
-	border-right: 1px solid var(--smb-pack-border-color);
-	text-align: center;
-	font-size: 16px;
 	-moz-appearance: textfield;
+	-webkit-appearance: none;
 	appearance: textfield;
+	width: var(--smb-cust-qty-width);
+	height: auto;
+	min-height: 0;
+	margin: 0;
+	padding: 0 4px;
+	border: 0;
+	border-left: var(--smb-cust-qty-border-w) solid var(--smb-cust-qty-border);
+	border-right: var(--smb-cust-qty-border-w) solid var(--smb-cust-qty-border);
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--smb-cust-qty-color);
+	font-family: var(--smb-cust-qty-font);
+	font-size: var(--smb-cust-qty-size);
+	font-weight: var(--smb-cust-qty-weight);
+	text-align: center;
 }
 .smb-wrap .smb-custom-stepper input.smb-custom-qty::-webkit-outer-spin-button,
 .smb-wrap .smb-custom-stepper input.smb-custom-qty::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Phones: dropdown on its own row, comfortable 44px touch targets */
 @media (max-width: 520px) {
-	.smb-wrap .smb-pack--custom .smb-var-select { flex-basis: 100%; min-height: 44px; }
-	.smb-wrap .smb-custom-stepper button,
-	.smb-wrap .smb-custom-stepper input.smb-custom-qty { min-height: 44px; }
-	.smb-wrap .smb-custom-stepper button { min-width: 44px; }
+	.smb-wrap .smb-custom-select { flex-basis: 100%; }
+	.smb-wrap .smb-custom-select select.smb-custom-var { height: max(var(--smb-cust-dd-height), 44px); }
+	.smb-wrap .smb-custom-stepper { height: max(var(--smb-cust-qty-height), 44px); }
 }

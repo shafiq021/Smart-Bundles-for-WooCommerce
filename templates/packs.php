@@ -21,6 +21,9 @@ foreach ( $tiers as $t ) {
 	}
 }
 
+// The settings-page preview shows the Custom card selected, so its dropdown and counter can be styled.
+$demo_custom = ! empty( $custom['demo'] );
+
 $layout = SMB_Source::clean_layout( isset( $layout ) ? $layout : 'list' ); // list | grid | carousel
 $slide  = 'carousel' === $layout ? ' smb-slide' : '';
 $track  = 'carousel' === $layout ? ' smb-carousel' : '';
@@ -37,7 +40,7 @@ $track  = 'carousel' === $layout ? ' smb-carousel' : '';
 
 	<div class="smb-packs<?php echo esc_attr( $track ); ?>" role="radiogroup">
 		<?php foreach ( $tiers as $i => $t ) :
-			$checked = $has_default ? ! empty( $t['default'] ) : ( 0 === $i );
+			$checked = ! $demo_custom && ( $has_default ? ! empty( $t['default'] ) : ( 0 === $i ) );
 			?>
 			<label class="smb-pack<?php echo esc_attr( $slide ); ?><?php echo $checked ? ' is-selected' : ''; ?>"
 				data-qty="<?php echo esc_attr( $t['qty'] ); ?>"
